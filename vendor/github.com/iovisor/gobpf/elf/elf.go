@@ -32,6 +32,7 @@ import (
 )
 
 /*
+#define _GNU_SOURCE
 #include <sys/types.h>
 #include <errno.h>
 #include <stdio.h>
@@ -56,6 +57,9 @@ typedef struct bpf_map_def {
   unsigned int key_size;
   unsigned int value_size;
   unsigned int max_entries;
+  unsigned int map_flags;
+  unsigned int pinning;
+  char program[64];
 } bpf_map_def;
 
 typedef struct bpf_map {
@@ -113,6 +117,13 @@ static int bpf_create_map(enum bpf_map_type map_type, int key_size,
 	return ret;
 }
 
+void create_bpf_obj_get(const char *pathname, void *attr)
+{
+       union bpf_attr* ptr_bpf_attr;
+       ptr_bpf_attr = (union bpf_attr*)attr;
+       ptr_bpf_attr->pathname = ptr_to_u64((void *) pathname);
+}
+
 static bpf_map *bpf_load_map(bpf_map_def *map_def)
 {
 	bpf_map *map;
@@ -122,6 +133,29 @@ static bpf_map *bpf_load_map(bpf_map_def *map_def)
 		return NULL;
 
 	memcpy(&map->def, map_def, sizeof(bpf_map_def));
+
+	char *path;
+	union bpf_attr attr = {};
+	int ret;
+
+	switch (map_def->pinning) {
+	// PIN_OBJECT_NS
+	// TODO handle this case differently
+	case 1:
+	// PIN_GLOBAL_NS
+	case 2:
+		// read map from bpf filesystem
+		asprintf(&path, "/sys/fs/bpf/%s/global", map_def->program);
+
+		create_bpf_obj_get(path, &attr);
+		ret = syscall(__NR_bpf, BPF_OBJ_GET, &attr, sizeof(attr));
+		if (ret < 0)
+			 return 0;
+
+		map->fd = ret;
+
+		return map;
+	}
 
 	map->fd = bpf_create_map(map_def->type,
 		map_def->key_size,
@@ -468,7 +502,7 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 					b.probes[secName] = &Kprobe{
 						Name:  secName,
 						insns: insns,
-						fd:    int(progFd),
+						Fd:    int(progFd),
 					}
 				case isCgroupSkb:
 					fallthrough
@@ -534,7 +568,7 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 				b.probes[secName] = &Kprobe{
 					Name:  secName,
 					insns: insns,
-					fd:    int(progFd),
+					Fd:    int(progFd),
 				}
 			case isCgroupSkb:
 				fallthrough
@@ -555,7 +589,7 @@ func (b *Module) initializePerfMaps(parameters map[string]SectionParams) error {
 	for name, m := range b.maps {
 		var cpu C.int = 0
 
-		if m.m != nil && m.m.def._type != C.BPF_MAP_TYPE_PERF_EVENT_ARRAY {
+		if m.m != nil && ((m.m.def._type != C.BPF_MAP_TYPE_PERF_EVENT_ARRAY) || m.m.def.pinning != 0) {
 			continue
 		}
 
@@ -641,4 +675,8 @@ func (b *Module) IterMaps() <-chan *Map {
 
 func (b *Module) Map(name string) *Map {
 	return b.maps[name]
+}
+
+func (m *Map) FD() int {
+	return int(m.m.fd)
 }
