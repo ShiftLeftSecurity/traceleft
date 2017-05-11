@@ -4,6 +4,8 @@
 #include <uapi/linux/bpf.h>
 #include "bpf_helpers.h"
 
+#define PIN_GLOBAL_NS 2
+
 typedef struct {
 	u64 timestamp;
 	char syscall[64];
@@ -71,6 +73,8 @@ struct bpf_map_def SEC("maps/events") event = {
 	.value_size = sizeof(__u32),
 	.max_entries = 1024,
 	.map_flags = 0,
+	.pinning = PIN_GLOBAL_NS,
+	.program = "traceleft",
 };
 
 SEC("kprobe/SyS_read")

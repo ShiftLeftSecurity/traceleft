@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -34,6 +35,7 @@ import (
 /*
 #define _GNU_SOURCE
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,6 +68,8 @@ typedef struct bpf_map {
 	int         fd;
 	bpf_map_def def;
 } bpf_map;
+
+extern int bpf_pin_object(int fd, const char *pathname);
 
 __u64 ptr_to_u64(void *ptr)
 {
@@ -119,14 +123,23 @@ static int bpf_create_map(enum bpf_map_type map_type, int key_size,
 
 void create_bpf_obj_get(const char *pathname, void *attr)
 {
-       union bpf_attr* ptr_bpf_attr;
-       ptr_bpf_attr = (union bpf_attr*)attr;
-       ptr_bpf_attr->pathname = ptr_to_u64((void *) pathname);
+	union bpf_attr *ptr_bpf_attr;
+	ptr_bpf_attr = (union bpf_attr *)attr;
+	ptr_bpf_attr->pathname = ptr_to_u64((void *) pathname);
 }
 
-static bpf_map *bpf_load_map(bpf_map_def *map_def)
+int get_pinned_obj_fd(const char *path)
+{
+	union bpf_attr attr = {};
+	create_bpf_obj_get(path, &attr);
+	return syscall(__NR_bpf, BPF_OBJ_GET, &attr, sizeof(attr));
+}
+
+static bpf_map *bpf_load_map(bpf_map_def *map_def, const char *path)
 {
 	bpf_map *map;
+	struct stat st;
+	int ret, do_pin = 0;
 
 	map = calloc(1, sizeof(bpf_map));
 	if (map == NULL)
@@ -134,27 +147,20 @@ static bpf_map *bpf_load_map(bpf_map_def *map_def)
 
 	memcpy(&map->def, map_def, sizeof(bpf_map_def));
 
-	char *path;
-	union bpf_attr attr = {};
-	int ret;
-
 	switch (map_def->pinning) {
-	// PIN_OBJECT_NS
-	// TODO handle this case differently
-	case 1:
-	// PIN_GLOBAL_NS
-	case 2:
-		// read map from bpf filesystem
-		asprintf(&path, "/sys/fs/bpf/%s/global", map_def->program);
-
-		create_bpf_obj_get(path, &attr);
-		ret = syscall(__NR_bpf, BPF_OBJ_GET, &attr, sizeof(attr));
-		if (ret < 0)
-			 return 0;
-
-		map->fd = ret;
-
-		return map;
+	case 1: // PIN_OBJECT_NS
+		// TODO to be implemented
+		return 0;
+	case 2: // PIN_GLOBAL_NS
+		if (stat(path, &st) == 0) {
+			ret = get_pinned_obj_fd(path);
+			if (ret < 0) {
+				return 0;
+			}
+			map->fd = ret;
+			return map;
+		}
+		do_pin = 1;
 	}
 
 	map->fd = bpf_create_map(map_def->type,
@@ -163,8 +169,16 @@ static bpf_map *bpf_load_map(bpf_map_def *map_def)
 		map_def->max_entries
 	);
 
-	if (map->fd < 0)
+	if (map->fd < 0) {
 		return 0;
+	}
+
+	if (do_pin) {
+		ret = bpf_pin_object(map->fd, path);
+		if (ret < 0) {
+			return 0;
+		}
+	}
 
 	return map;
 }
@@ -291,7 +305,15 @@ func elfReadMaps(file *elf.File) (map[string]*Map, error) {
 			mapCount := len(data) / C.sizeof_struct_bpf_map_def
 			for i := 0; i < mapCount; i++ {
 				pos := i * C.sizeof_struct_bpf_map_def
-				cm, err := C.bpf_load_map((*C.bpf_map_def)(unsafe.Pointer(&data[pos])))
+				mapDef := (*C.bpf_map_def)(unsafe.Pointer(&data[pos]))
+
+				mapPath := filepath.Join(BPFFSPath, C.GoString(&mapDef.program[0]), BPFDirGlobals, name)
+				os.MkdirAll(filepath.Dir(mapPath), syscall.S_IRWXU)
+
+				mapPathC := C.CString(mapPath)
+				defer C.free(unsafe.Pointer(mapPathC))
+
+				cm, err := C.bpf_load_map(mapDef, mapPathC)
 				if cm == nil {
 					return nil, fmt.Errorf("error while loading map %q: %v", section.Name, err)
 				}
@@ -502,7 +524,7 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 					b.probes[secName] = &Kprobe{
 						Name:  secName,
 						insns: insns,
-						Fd:    int(progFd),
+						fd:    int(progFd),
 					}
 				case isCgroupSkb:
 					fallthrough
@@ -568,7 +590,7 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 				b.probes[secName] = &Kprobe{
 					Name:  secName,
 					insns: insns,
-					Fd:    int(progFd),
+					fd:    int(progFd),
 				}
 			case isCgroupSkb:
 				fallthrough
@@ -589,7 +611,7 @@ func (b *Module) initializePerfMaps(parameters map[string]SectionParams) error {
 	for name, m := range b.maps {
 		var cpu C.int = 0
 
-		if m.m != nil && ((m.m.def._type != C.BPF_MAP_TYPE_PERF_EVENT_ARRAY) || m.m.def.pinning != 0) {
+		if m.m != nil && m.m.def._type != C.BPF_MAP_TYPE_PERF_EVENT_ARRAY {
 			continue
 		}
 
@@ -632,7 +654,7 @@ func (b *Module) initializePerfMaps(parameters map[string]SectionParams) error {
 				return fmt.Errorf("error enabling perf event: %v", err2)
 			}
 
-			// assign perf fd tp map
+			// assign perf fd to map
 			ret, err := C.bpf_update_element(C.int(b.maps[name].m.fd), unsafe.Pointer(&cpu), unsafe.Pointer(&pmuFD), C.BPF_ANY)
 			if ret != 0 {
 				return fmt.Errorf("cannot assign perf fd to map %q: %v (cpu %d)", name, err, cpu)
@@ -677,6 +699,6 @@ func (b *Module) Map(name string) *Map {
 	return b.maps[name]
 }
 
-func (m *Map) FD() int {
+func (m *Map) Fd() int {
 	return int(m.m.fd)
 }

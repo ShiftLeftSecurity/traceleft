@@ -82,7 +82,7 @@ type Module struct {
 type Kprobe struct {
 	Name  string
 	insns *C.struct_bpf_insn
-	Fd    int
+	fd    int
 	efd   int
 }
 
@@ -164,7 +164,7 @@ func (b *Module) EnableKprobe(secName string, maxactive int) error {
 	if !ok {
 		return fmt.Errorf("no such kprobe %q", secName)
 	}
-	progFd := probe.Fd
+	progFd := probe.fd
 	var maxactiveStr string
 	if isKretprobe {
 		probeType = "r"
@@ -261,4 +261,8 @@ func (b *Module) AttachCgroupProgram(cgroupProg *CgroupProgram, cgroupPath strin
 	}
 
 	return nil
+}
+
+func (kp *Kprobe) Fd() int {
+	return kp.fd
 }
