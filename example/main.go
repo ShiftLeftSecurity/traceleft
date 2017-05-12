@@ -107,12 +107,11 @@ func handleEvent(data *[]byte) {
 	}
 	syscall := (*C.char)(unsafe.Pointer(&event.Syscall))
 	buffer := (*C.char)(unsafe.Pointer(&event.Buffer))
-	bufferGo := C.GoString(buffer)
+	len := C.int(0)
 	if event.Ret > 0 {
-		bufferGo = bufferGo[:event.Ret]
-	} else {
-		bufferGo = ""
+		len = C.int(event.Ret)
 	}
+	bufferGo := C.GoStringN(buffer, len)
 	fmt.Printf("syscall %s pid %d fd %d return value %d buffer %s\n",
 		C.GoString(syscall), event.Pid, event.Fd, event.Ret, bufferGo)
 }
