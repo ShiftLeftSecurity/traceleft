@@ -13,7 +13,6 @@ typedef struct {
 	u32 pid;
 	u32 fd;
 	int32_t ret;
-	u32 padding;
 } event_t;
 
 struct bpf_map_def SEC("maps/handle_open_progs") handle_open_progs = {

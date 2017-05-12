@@ -30,7 +30,6 @@ type readEvent struct {
 	Pid       uint32
 	Fd        uint32
 	Ret       int32
-	Padding   uint32
 }
 
 func init() {

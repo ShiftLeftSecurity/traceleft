@@ -12,7 +12,6 @@ typedef struct {
 	u32 pid;
 	u32 fd;
 	int32_t ret;
-	u32 padding;
 } event_t;
 
 #define PIN_GLOBAL_NS 2
