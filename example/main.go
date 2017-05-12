@@ -97,6 +97,13 @@ func (t *Tracer) BPFModule() *elflib.Module {
 	return t.m
 }
 
+func min(x, y int) int {
+	if x > y {
+		return y
+	}
+	return x
+}
+
 func handleEvent(data *[]byte) {
 	var event readEvent
 	err := binary.Read(bytes.NewBuffer(*data), binary.LittleEndian, &event)
@@ -106,11 +113,11 @@ func handleEvent(data *[]byte) {
 	}
 	syscall := (*C.char)(unsafe.Pointer(&event.Syscall))
 	buffer := (*C.char)(unsafe.Pointer(&event.Buffer))
-	len := C.int(0)
+	length := C.int(0)
 	if event.Ret > 0 {
-		len = C.int(event.Ret)
+		length = C.int(min(int(event.Ret), len(event.Buffer)))
 	}
-	bufferGo := C.GoStringN(buffer, len)
+	bufferGo := C.GoStringN(buffer, length)
 	fmt.Printf("syscall %s pid %d fd %d return value %d buffer %s\n",
 		C.GoString(syscall), event.Pid, event.Fd, event.Ret, bufferGo)
 }
