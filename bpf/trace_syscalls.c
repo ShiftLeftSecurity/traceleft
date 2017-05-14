@@ -9,9 +9,7 @@
 typedef struct {
 	u64 timestamp;
 	char syscall[64];
-	char buffer[256];
 	u32 pid;
-	u32 fd;
 	int32_t ret;
 } event_t;
 
