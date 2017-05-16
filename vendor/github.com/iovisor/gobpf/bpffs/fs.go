@@ -1,4 +1,4 @@
-package bpf
+package bpffs
 
 import (
 	"fmt"
@@ -11,8 +11,8 @@ const (
 	FsMagicBPFFS = 0xCAFE4A11
 )
 
-// IsBPFFSMounted checks if the BPF fs is mounted already
-func IsBPFFSMounted() (bool, error) {
+// IsMounted checks if the BPF fs is mounted already
+func IsMounted() (bool, error) {
 	var data syscall.Statfs_t
 	if err := syscall.Statfs(BPFFSPath, &data); err != nil {
 		return false, fmt.Errorf("cannot statfs %q: %v", BPFFSPath, err)
@@ -20,9 +20,9 @@ func IsBPFFSMounted() (bool, error) {
 	return data.Type == FsMagicBPFFS, nil
 }
 
-// MountBPFFS mounts the BPF fs if not already mounted
-func MountBPFFS() error {
-	mounted, err := IsBPFFSMounted()
+// Mount mounts the BPF fs if not already mounted
+func Mount() error {
+	mounted, err := IsMounted()
 	if err != nil {
 		return err
 	}

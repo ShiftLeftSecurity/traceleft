@@ -69,7 +69,7 @@ struct bpf_map_def {
 	unsigned int max_entries;
 	unsigned int map_flags;
 	unsigned int pinning;
-	char program[64];
+	char namespace[256];
 };
 
 static int (*bpf_skb_store_bytes)(void *ctx, int off, void *from, int len, int flags) =

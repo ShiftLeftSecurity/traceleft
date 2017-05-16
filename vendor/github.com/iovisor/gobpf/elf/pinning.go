@@ -1,19 +1,5 @@
 // +build linux
 
-// Copyright 2017 Kinvolk
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package elf
 
 import (
@@ -21,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"unsafe"
+
+	"github.com/iovisor/gobpf/bpffs"
 )
 
 /*
@@ -49,9 +37,19 @@ const (
 )
 
 func pinObject(fd int, namespace, object, name string) error {
+	mounted, err := bpffs.IsMounted()
+	if err != nil {
+		return fmt.Errorf("error checking if %q is mounted: %v", BPFFSPath, err)
+	}
+	if !mounted {
+		return fmt.Errorf("bpf fs not mounted at %q", BPFFSPath)
+	}
 	mapPath := filepath.Join(BPFFSPath, namespace, object, name)
-	os.MkdirAll(filepath.Dir(mapPath), 0755)
-	err := os.RemoveAll(mapPath)
+	err = os.MkdirAll(filepath.Dir(mapPath), 0755)
+	if err != nil {
+		return fmt.Errorf("error creating map directory %q: %v", filepath.Dir(mapPath), err)
+	}
+	err = os.RemoveAll(mapPath)
 	if err != nil {
 		return fmt.Errorf("error removing old map file %q: %v", mapPath, err)
 	}
