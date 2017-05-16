@@ -1,0 +1,17 @@
+syntax = "proto3";
+package generator;
+
+message Event {
+    string Name = 1;
+    message Args {
+        uint32 position = 1;
+        string type = 2;
+        string name = 3;
+        string suffix = 4;
+    }
+    repeated Args args = 2;
+}
+
+message Config {
+    repeated Event event = 1;
+}

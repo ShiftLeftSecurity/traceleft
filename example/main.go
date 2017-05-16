@@ -20,8 +20,8 @@ import (
 import "C"
 
 var (
-	eventMap *string
-	eventStrings *string
+	eventMap    *string
+	eventConfig *string
 )
 
 // this has to match the struct in trace_syscalls.c and handlers.
@@ -33,7 +33,7 @@ type readEvent struct {
 }
 
 func init() {
-	eventStrings = flag.String("build-events", "", "Comma-separated event strings")
+	eventConfig = flag.String("build-events", "", "Path to JSON event config")
 	eventMap = flag.String("event-map", "", "Comma-separated [PID]:[elf object] pairs")
 }
 
@@ -176,10 +176,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *eventStrings != "" && *eventMap == "" {
-		evStrs := strings.Split(*eventStrings, ",")
-		generator.GenerateBpfSources(evStrs, "battery/handler.c.tpl", "battery")
-	} else if *eventStrings == "" && *eventMap != "" {
+	if *eventConfig != "" && *eventMap == "" {
+		generator.GenerateBpfSources(*eventConfig, "battery/handler.c.tpl", "battery")
+	} else if *eventConfig == "" && *eventMap != "" {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt, os.Kill)
 

@@ -1,0 +1,200 @@
+{
+  "event": [
+    {
+      "name" : "sys_open",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "filename",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },
+    {
+      "name" : "sys_close",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "fd"
+        }
+      ]
+    },
+    {
+      "name" : "sys_write",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "fd"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "count"
+        }
+      ]
+    },
+    {
+      "name" : "sys_read",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "fd"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "count"
+        }
+      ]
+    },
+    {
+      "name" : "sys_mkdir",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },
+    {
+      "name" : "sys_chmod",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },
+    {
+      "name" : "sys_fchmod",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "dfd"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },
+    {
+      "name" : "sys_fchmodat",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "dfd"
+        },
+        {
+          "position" : 2,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },    {
+      "name" : "sys_chown",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "uid"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "gid"
+        }
+      ]
+    },
+    {
+      "name" : "sys_fchown",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "fd"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "uid"
+        },
+        {
+          "position" : 4,
+          "type" : "u64",
+          "name" : "gid"
+        }
+      ]
+    },
+    {
+      "name" : "sys_fchownat",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "fd"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "uid"
+        },
+        {
+          "position" : 4,
+          "type" : "u64",
+          "name" : "gid"
+        }
+      ]
+    }
+  ]
+}

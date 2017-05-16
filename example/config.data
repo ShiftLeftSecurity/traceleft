@@ -1,0 +1,25 @@
+
+4
+sys_opencharfilename"[256]u64mode
+
+	sys_closeu64fd
+(
+	sys_writeu64fdu64count
+'
+sys_readu64fdu64count
+1
+	sys_mkdircharpath"[256]u64mode
+1
+	sys_chmodcharpath"[256]u64mode
+)
+
+sys_fchmodu64dfdu64mode
+B
+sys_fchmodatu64dfdcharpath"[256]u64mode
+>
+	sys_chowncharpath"[256]u64uidu64gid
+L
+
+sys_fchowncharpath"[256]u64fdu64uidu64gid
+N
+sys_fchownatcharpath"[256]u64fdu64uidu64gid

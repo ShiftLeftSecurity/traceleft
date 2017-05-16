@@ -5,13 +5,13 @@ import (
 	"os"
 	"fmt"
 	"io/ioutil"
-	"github.com/prometheus/common/log"
 	"path/filepath"
+	"log"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 )
 
-type Event struct {
-	EventName string
-}
+const CONFIGPB_FILE string = "config.data"
 
 func fileExists(path string) bool {
 	if f, err := os.Stat(path); err != nil {
@@ -25,7 +25,62 @@ func fileExists(path string) bool {
 	return true
 }
 
-func GenerateBpfSources(events []string, tpl string, destDir string) {
+// Converts PB to JSON and writes on disk for re-reading later on
+func writePBFromJSON(pathToJson string) error {
+	p := &Config{}
+	file, err := os.Open(pathToJson)
+	if err != nil {
+		return err
+	}
+
+	err = jsonpb.Unmarshal(file, p)
+	if err != nil {
+		return err
+	}
+
+	out, err := proto.Marshal(p)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(CONFIGPB_FILE, out, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getConfigFromPB(pathToPB string) (*Config, error) {
+	p := &Config{}
+	in, err := ioutil.ReadFile(pathToPB)
+	if err != nil {
+		return nil, err
+	}
+
+	err = proto.Unmarshal(in, p)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func unmarshalConfig(path string) (*Config, error) {
+	// TODO: Only for now - till we have a way to get PB on the wire
+	err := writePBFromJSON(path)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := getConfigFromPB(CONFIGPB_FILE)
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+func GenerateBpfSources(configPath string, tpl string, destDir string) {
 	if !fileExists(tpl) {
 		log.Fatalf("Template file doesn't exist")
 	}
@@ -34,8 +89,20 @@ func GenerateBpfSources(events []string, tpl string, destDir string) {
 		log.Fatalf("Invalid destination directory")
 	}
 
-	for _, eventString := range events {
-		ev := Event{eventString}
+	if !fileExists(configPath) {
+		log.Fatalf("Config file doesn't exist")
+	}
+
+	// Uses the PB config struct directly
+	config, err := unmarshalConfig(configPath)
+	if err != nil {
+		log.Fatalf("Could not read config")
+	}
+
+	for _, event := range config.Event {
+		ev := Event{
+			Name:event.Name,
+		}
 
 		tplText, err := ioutil.ReadFile(tpl)
 		if err != nil {
@@ -49,7 +116,7 @@ func GenerateBpfSources(events []string, tpl string, destDir string) {
 			fmt.Errorf(err.Error())
 		}
 
-		evPath := fmt.Sprintf("handle_%s.c", eventString)
+		evPath := fmt.Sprintf("handle_%s.c", event.Name)
 
 		fi, err := os.Create(filepath.Join(destDir, evPath))
 		if err != nil {

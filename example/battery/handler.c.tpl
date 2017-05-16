@@ -7,11 +7,11 @@ typedef struct {
     char syscall[64];
 	u32 pid;
 	int32_t ret;
-} {{ .EventName }}_event_t;
+} {{ .Name }}_event_t;
 
 #define PIN_GLOBAL_NS 2
 
-struct bpf_map_def SEC("maps/events") {{ .EventName }}_event =
+struct bpf_map_def SEC("maps/events") {{ .Name }}_event =
 {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
 	.key_size = sizeof(int),
@@ -22,7 +22,7 @@ struct bpf_map_def SEC("maps/events") {{ .EventName }}_event =
 	.namespace = "traceleft",
 };
 
-struct bpf_map_def SEC("maps/{{ .EventName }}_args") {{ .EventName }}args =
+struct bpf_map_def SEC("maps/{{ .Name }}_args") {{ .Name }}args =
 {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u64),
@@ -30,37 +30,37 @@ struct bpf_map_def SEC("maps/{{ .EventName }}_args") {{ .EventName }}args =
 	.max_entries = 1024,
 };
 
-SEC("kretprobe/handle_{{ .EventName }}")
-int kretprobe__handle_{{ .EventName }}(struct pt_regs *ctx)
+SEC("kretprobe/handle_{{ .Name }}")
+int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 {
 	struct pt_regs *args;
 	u64 pid = bpf_get_current_pid_tgid();
 	u32 cpu = bpf_get_smp_processor_id();
 
-	args = bpf_map_lookup_elem(&{{ .EventName }}args, &pid);
+	args = bpf_map_lookup_elem(&{{ .Name }}args, &pid);
 	if (args == NULL) {
 		return 0;
 	}
-	bpf_map_delete_elem(&{{ .EventName }}args, &pid);
+	bpf_map_delete_elem(&{{ .Name }}args, &pid);
 
-	{{ .EventName }}_event_t evt = {
+	{{ .Name }}_event_t evt = {
 		.timestamp = bpf_ktime_get_ns(),
-		.syscall = "{{ .EventName }}",
+		.syscall = "{{ .Name }}",
 		.pid = pid >> 32,
 		.ret = PT_REGS_RC(ctx),
 	};
 
-	bpf_perf_event_output(ctx, &{{ .EventName }}_event, cpu, &evt, sizeof(evt));
+	bpf_perf_event_output(ctx, &{{ .Name }}_event, cpu, &evt, sizeof(evt));
 	return 0;
 };
 
-SEC("kprobe/handle_{{ .EventName }}")
-int kprobe__handle_{{ .EventName }}(struct pt_regs *ctx)
+SEC("kprobe/handle_{{ .Name }}")
+int kprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	struct pt_regs args = { };
 	bpf_probe_read(&args, sizeof(args), ctx);
-	bpf_map_update_elem(&{{ .EventName }}args, &pid, &args, BPF_ANY);
+	bpf_map_update_elem(&{{ .Name }}args, &pid, &args, BPF_ANY);
 	return 0;
 }
 
