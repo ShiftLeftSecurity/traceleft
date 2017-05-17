@@ -73,7 +73,7 @@ struct bpf_map_def SEC("maps/events") event = {
 	.max_entries = 1024,
 	.map_flags = 0,
 	.pinning = PIN_GLOBAL_NS,
-	.program = "traceleft",
+	.namespace = "traceleft",
 };
 
 SEC("kprobe/SyS_read")

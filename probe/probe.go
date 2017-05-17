@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/iovisor/gobpf"
+	"github.com/iovisor/gobpf/bpffs"
 	elflib "github.com/iovisor/gobpf/elf"
 )
 
@@ -61,7 +61,7 @@ func RegisterHandler(globalBPF *elflib.Module, pids []int, elfBPF []byte) error 
 }
 
 func Load() (*elflib.Module, error) {
-	if err := bpf.MountBPFFS(); err != nil {
+	if err := bpffs.Mount(); err != nil {
 		return nil, err
 	}
 	// FIXME move this to go-bindata?
