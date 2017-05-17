@@ -1,7 +1,7 @@
 {
   "event": [
     {
-      "name" : "sys_open",
+      "name" : "open",
       "args" : [
         {
           "position" : 1,
@@ -17,7 +17,7 @@
       ]
     },
     {
-      "name" : "sys_close",
+      "name" : "close",
       "args" : [
         {
           "position" : 1,
@@ -27,22 +27,7 @@
       ]
     },
     {
-      "name" : "sys_write",
-      "args" : [
-        {
-          "position" : 1,
-          "type" : "u64",
-          "name" : "fd"
-        },
-        {
-          "position" : 3,
-          "type" : "u64",
-          "name" : "count"
-        }
-      ]
-    },
-    {
-      "name" : "sys_read",
+      "name" : "write",
       "args" : [
         {
           "position" : 1,
@@ -57,7 +42,22 @@
       ]
     },
     {
-      "name" : "sys_mkdir",
+      "name" : "read",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "fd"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "count"
+        }
+      ]
+    },
+    {
+      "name" : "mkdir",
       "args" : [
         {
           "position" : 1,
@@ -73,7 +73,7 @@
       ]
     },
     {
-      "name" : "sys_chmod",
+      "name" : "chmod",
       "args" : [
         {
           "position" : 1,
@@ -89,7 +89,7 @@
       ]
     },
     {
-      "name" : "sys_fchmod",
+      "name" : "fchmod",
       "args" : [
         {
           "position" : 1,
@@ -104,7 +104,7 @@
       ]
     },
     {
-      "name" : "sys_fchmodat",
+      "name" : "fchmodat",
       "args" : [
         {
           "position" : 1,
@@ -124,7 +124,7 @@
         }
       ]
     },    {
-      "name" : "sys_chown",
+      "name" : "chown",
       "args" : [
         {
           "position" : 1,
@@ -145,7 +145,7 @@
       ]
     },
     {
-      "name" : "sys_fchown",
+      "name" : "fchown",
       "args" : [
         {
           "position" : 1,
@@ -171,7 +171,7 @@
       ]
     },
     {
-      "name" : "sys_fchownat",
+      "name" : "fchownat",
       "args" : [
         {
           "position" : 1,
