@@ -122,14 +122,19 @@ func handleEvent(data *[]byte) {
 		C.GoString(syscall), event.Pid, event.Fd, event.Ret, bufferGo)
 }
 
-func registerEvents(bpfModule *elflib.Module, events map[int]string) error {
-	for pid, bpfFile := range events {
-		elfBPFBytes, err := ioutil.ReadFile(bpfFile)
+type Event struct {
+	Pids    []int
+	ELFPath string
+}
+
+func registerEvents(bpfModule *elflib.Module, events []Event) error {
+	for _, event := range events {
+		elfBPFBytes, err := ioutil.ReadFile(event.ELFPath)
 		if err != nil {
-			return fmt.Errorf("error reading %q: %v", bpfFile, err)
+			return fmt.Errorf("error reading %q: %v", event.ELFPath, err)
 		}
 
-		if err := probe.RegisterHandler(bpfModule, []int{pid}, elfBPFBytes); err != nil {
+		if err := probe.RegisterHandler(bpfModule, event.Pids, elfBPFBytes); err != nil {
 			return fmt.Errorf("error registering handler: %v", err)
 		}
 	}
@@ -137,21 +142,32 @@ func registerEvents(bpfModule *elflib.Module, events map[int]string) error {
 	return nil
 }
 
-func parseEventMap(eventMap string) (map[int]string, error) {
-	events := make(map[int]string)
-	eventsParts := strings.Split(eventMap, ",")
+func parseEventMap(eventMap string) ([]Event, error) {
+	var events []Event
+	eventsParts := strings.Split(eventMap, ";")
 	for _, ev := range eventsParts {
 		evParts := strings.Split(ev, ":")
 		if len(evParts) != 2 {
 			return nil, fmt.Errorf("malformed event-map %q", ev)
 		}
-		pid, err := strconv.Atoi(evParts[0])
-		if err != nil {
-			return nil, fmt.Errorf("malformed pid %q in event-map", evParts[0])
+		pidsStr := evParts[0]
+		pidParts := strings.Split(pidsStr, ",")
+		var pids []int
+		for _, pidStr := range pidParts {
+			pid, err := strconv.Atoi(pidStr)
+			if err != nil {
+				return nil, fmt.Errorf("malformed pid %q in event-map", pidStr)
+			}
+			pids = append(pids, pid)
 		}
+
 		ebpfFile := evParts[1]
 
-		events[pid] = ebpfFile
+		event := Event{
+			Pids:    pids,
+			ELFPath: ebpfFile,
+		}
+		events = append(events, event)
 	}
 
 	return events, nil
