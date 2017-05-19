@@ -1,14 +1,13 @@
 package generator
 
 import (
-	"text/template"
-	"os"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
-	"log"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"text/template"
 )
 
 const CONFIGPB_FILE string = "config.data"
@@ -32,9 +31,9 @@ func writePBFromJSON(pathToJson string) error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
-	err = jsonpb.Unmarshal(file, p)
-	if err != nil {
+	if err := jsonpb.Unmarshal(file, p); err != nil {
 		return err
 	}
 
@@ -43,8 +42,7 @@ func writePBFromJSON(pathToJson string) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(CONFIGPB_FILE, out, 0644)
-	if err != nil {
+	if err := ioutil.WriteFile(CONFIGPB_FILE, out, 0644); err != nil {
 		return err
 	}
 
@@ -58,8 +56,7 @@ func getConfigFromPB(pathToPB string) (*Config, error) {
 		return nil, err
 	}
 
-	err = proto.Unmarshal(in, p)
-	if err != nil {
+	if err := proto.Unmarshal(in, p); err != nil {
 		return nil, err
 	}
 	return p, nil
@@ -67,8 +64,7 @@ func getConfigFromPB(pathToPB string) (*Config, error) {
 
 func unmarshalConfig(path string) (*Config, error) {
 	// TODO: Only for now - till we have a way to get PB on the wire
-	err := writePBFromJSON(path)
-	if err != nil {
+	if err := writePBFromJSON(path); err != nil {
 		return nil, err
 	}
 
@@ -80,55 +76,62 @@ func unmarshalConfig(path string) (*Config, error) {
 	return config, nil
 }
 
-func GenerateBpfSources(configPath string, tpl string, destDir string) {
+func buildSource(event *Event, tpl string, destDir string) error {
+	ev := Event{
+		event.Name,
+		event.Args,
+	}
+
+	tplText, err := ioutil.ReadFile(tpl)
+	if err != nil {
+		return fmt.Errorf("could not read template: %v", err)
+	}
+
+	t := template.New("BPF Source")
+
+	t, err = t.Parse(string(tplText))
+	if err != nil {
+		return fmt.Errorf("could not parse template: %v", err)
+	}
+
+	evPath := fmt.Sprintf("handle_%s.c", event.Name)
+
+	fi, err := os.Create(filepath.Join(destDir, evPath))
+	if err != nil {
+		return fmt.Errorf("could not create BPF source: %v", err)
+	}
+	defer fi.Close()
+
+	if err = t.Execute(fi, ev); err != nil {
+		return fmt.Errorf("could not execute template: %v", err)
+	}
+
+	return nil
+}
+
+func GenerateBpfSources(configPath string, tpl string, destDir string) (error) {
 	if !fileExists(tpl) {
-		log.Fatalf("Template file doesn't exist")
+		return fmt.Errorf("template file doesn't exist")
 	}
 
 	if f, err := os.Stat(destDir); err != nil || !f.IsDir() {
-		log.Fatalf("Invalid destination directory")
+		return fmt.Errorf("invalid destination directory: %v", err)
 	}
 
 	if !fileExists(configPath) {
-		log.Fatalf("Config file doesn't exist")
+		return fmt.Errorf("config file doesn't exist")
 	}
 
 	// Uses the PB config struct directly
 	config, err := unmarshalConfig(configPath)
 	if err != nil {
-		log.Fatalf("Could not read config")
+		return fmt.Errorf("could not read config: %v", err)
 	}
 
 	for _, event := range config.Event {
-		ev := Event{
-			Name:event.Name,
+		if err := buildSource(event, tpl, destDir); err != nil {
+			return fmt.Errorf("could not build source: %v", err)
 		}
-
-		tplText, err := ioutil.ReadFile(tpl)
-		if err != nil {
-			fmt.Print(err)
-		}
-
-		t := template.New("BPF Source")
-
-		t, err = t.Parse(string(tplText))
-		if err != nil {
-			fmt.Errorf(err.Error())
-		}
-
-		evPath := fmt.Sprintf("handle_%s.c", event.Name)
-
-		fi, err := os.Create(filepath.Join(destDir, evPath))
-		if err != nil {
-			log.Fatalf(err.Error())
-			return
-		}
-
-		err = t.Execute(fi, ev)
-		if err != nil {
-			fmt.Errorf(err.Error())
-		}
-
-		fi.Close()
 	}
+	return nil
 }

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/ShiftLeftSecurity/traceleft/probe"
 	"github.com/ShiftLeftSecurity/traceleft/generator"
+	"github.com/ShiftLeftSecurity/traceleft/probe"
 	elflib "github.com/iovisor/gobpf/elf"
 )
 
@@ -177,7 +177,10 @@ func main() {
 	}
 
 	if *eventConfig != "" && *eventMap == "" {
-		generator.GenerateBpfSources(*eventConfig, "battery/handler.c.tpl", "battery")
+		if err := generator.GenerateBpfSources(*eventConfig, "battery/handler.c.tpl", "battery"); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
 	} else if *eventConfig == "" && *eventMap != "" {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt, os.Kill)
@@ -187,7 +190,6 @@ func main() {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-
 
 		events, err := parseEventMap(*eventMap)
 		if err != nil {
@@ -203,9 +205,8 @@ func main() {
 		<-sig
 		tracer.Stop()
 	} else {
-		fmt.Fprintf(os.Stderr, "Invalid option(s)")
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
-
 
 }

@@ -2,7 +2,7 @@ syntax = "proto3";
 package generator;
 
 message Event {
-    string Name = 1;
+    string name = 1;
     message Args {
         uint32 position = 1;
         string type = 2;
