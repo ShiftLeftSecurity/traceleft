@@ -12,6 +12,7 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/ShiftLeftSecurity/traceleft/generator"
 	"github.com/ShiftLeftSecurity/traceleft/probe"
 	elflib "github.com/iovisor/gobpf/elf"
 )
@@ -19,20 +20,20 @@ import (
 import "C"
 
 var (
-	eventMap *string
+	eventMap    *string
+	eventConfig *string
 )
 
 // this has to match the struct in trace_syscalls.c and handlers.
 type readEvent struct {
 	Timestamp uint64
 	Syscall   [64]byte
-	Buffer    [256]byte
 	Pid       uint32
-	Fd        uint32
 	Ret       int32
 }
 
 func init() {
+	eventConfig = flag.String("build-events", "", "Path to JSON event config")
 	eventMap = flag.String("event-map", "", "Comma-separated [PID]:[elf object] pairs")
 }
 
@@ -112,14 +113,8 @@ func handleEvent(data *[]byte) {
 		return
 	}
 	syscall := (*C.char)(unsafe.Pointer(&event.Syscall))
-	buffer := (*C.char)(unsafe.Pointer(&event.Buffer))
-	length := C.int(0)
-	if event.Ret > 0 {
-		length = C.int(min(int(event.Ret), len(event.Buffer)))
-	}
-	bufferGo := C.GoStringN(buffer, length)
-	fmt.Printf("syscall %s pid %d fd %d return value %d buffer %s\n",
-		C.GoString(syscall), event.Pid, event.Fd, event.Ret, bufferGo)
+	fmt.Printf("syscall %s pid %d return value %d\n",
+		C.GoString(syscall), event.Pid, event.Ret)
 }
 
 type Event struct {
@@ -181,26 +176,37 @@ func main() {
 		os.Exit(0)
 	}
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, os.Kill)
+	if *eventConfig != "" && *eventMap == "" {
+		if err := generator.GenerateBpfSources(*eventConfig, "battery/handler.c.tpl", "battery"); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+	} else if *eventConfig == "" && *eventMap != "" {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, os.Kill)
 
-	tracer, err := NewTracer(handleEvent)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		tracer, err := NewTracer(handleEvent)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+
+		events, err := parseEventMap(*eventMap)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+
+		if err := registerEvents(tracer.BPFModule(), events); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+
+		<-sig
+		tracer.Stop()
+	} else {
+		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	events, err := parseEventMap(*eventMap)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-
-	if err := registerEvents(tracer.BPFModule(), events); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-
-	<-sig
-	tracer.Stop()
 }

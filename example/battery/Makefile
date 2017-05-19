@@ -20,7 +20,7 @@ build-ebpf-object:
 		-v $(PWD)/out:/dist/ \
 		--workdir=/src \
 		$(DOCKER_IMAGE) \
-		make -f ebpf.mk build
+		make -f ebpf.mk
 	sudo chown -R $(UID):$(UID) out
 
 delete-docker-image:

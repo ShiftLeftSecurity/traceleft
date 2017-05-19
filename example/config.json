@@ -1,0 +1,200 @@
+{
+  "event": [
+    {
+      "name" : "open",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "filename",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },
+    {
+      "name" : "close",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "fd"
+        }
+      ]
+    },
+    {
+      "name" : "write",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "fd"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "count"
+        }
+      ]
+    },
+    {
+      "name" : "read",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "fd"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "count"
+        }
+      ]
+    },
+    {
+      "name" : "mkdir",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },
+    {
+      "name" : "chmod",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },
+    {
+      "name" : "fchmod",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "dfd"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },
+    {
+      "name" : "fchmodat",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "u64",
+          "name" : "dfd"
+        },
+        {
+          "position" : 2,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "mode"
+        }
+      ]
+    },    {
+      "name" : "chown",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "uid"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "gid"
+        }
+      ]
+    },
+    {
+      "name" : "fchown",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "fd"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "uid"
+        },
+        {
+          "position" : 4,
+          "type" : "u64",
+          "name" : "gid"
+        }
+      ]
+    },
+    {
+      "name" : "fchownat",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "char",
+          "name" : "path",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 2,
+          "type" : "u64",
+          "name" : "fd"
+        },
+        {
+          "position" : 3,
+          "type" : "u64",
+          "name" : "uid"
+        },
+        {
+          "position" : 4,
+          "type" : "u64",
+          "name" : "gid"
+        }
+      ]
+    }
+  ]
+}

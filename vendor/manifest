@@ -2,6 +2,69 @@
 	"version": 0,
 	"dependencies": [
 		{
+			"importpath": "github.com/golang/protobuf/jsonpb",
+			"repository": "https://github.com/golang/protobuf",
+			"vcs": "git",
+			"revision": "fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4",
+			"branch": "master",
+			"path": "/jsonpb",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/golang/protobuf/proto",
+			"repository": "https://github.com/golang/protobuf",
+			"vcs": "git",
+			"revision": "fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4",
+			"branch": "master",
+			"path": "proto",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/golang/protobuf/ptypes/any",
+			"repository": "https://github.com/golang/protobuf",
+			"vcs": "git",
+			"revision": "fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4",
+			"branch": "master",
+			"path": "ptypes/any",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/golang/protobuf/ptypes/duration",
+			"repository": "https://github.com/golang/protobuf",
+			"vcs": "git",
+			"revision": "fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4",
+			"branch": "master",
+			"path": "ptypes/duration",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/golang/protobuf/ptypes/struct",
+			"repository": "https://github.com/golang/protobuf",
+			"vcs": "git",
+			"revision": "fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4",
+			"branch": "master",
+			"path": "ptypes/struct",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/golang/protobuf/ptypes/timestamp",
+			"repository": "https://github.com/golang/protobuf",
+			"vcs": "git",
+			"revision": "fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4",
+			"branch": "master",
+			"path": "ptypes/timestamp",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/golang/protobuf/ptypes/wrappers",
+			"repository": "https://github.com/golang/protobuf",
+			"vcs": "git",
+			"revision": "fec3b39b059c0f88fa6b20f5ed012b1aa203a8b4",
+			"branch": "master",
+			"path": "ptypes/wrappers",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/iovisor/gobpf/bpffs",
 			"repository": "https://github.com/iovisor/gobpf",
 			"vcs": "git",
