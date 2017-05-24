@@ -74,6 +74,8 @@ func New(callback func(*[]byte)) (*Tracer, error) {
 func (t *Tracer) Stop() {
 	close(t.stopChan)
 	t.perfMap.PollStop()
+
+	t.m.Close()
 }
 
 func (t *Tracer) BPFModule() *elflib.Module {
