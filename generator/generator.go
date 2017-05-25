@@ -109,7 +109,7 @@ func buildSource(event *Event, tpl string, destDir string) error {
 	return nil
 }
 
-func GenerateBpfSources(configPath string, tpl string, destDir string) (error) {
+func GenerateBpfSources(configPath string, tpl string, destDir string) error {
 	if !fileExists(tpl) {
 		return fmt.Errorf("template file doesn't exist")
 	}
@@ -119,7 +119,7 @@ func GenerateBpfSources(configPath string, tpl string, destDir string) (error) {
 	}
 
 	if !fileExists(configPath) {
-		return fmt.Errorf("config file doesn't exist")
+		return fmt.Errorf("config file %q doesn't exist", configPath)
 	}
 
 	// Uses the PB config struct directly
