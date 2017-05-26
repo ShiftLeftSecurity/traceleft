@@ -10,8 +10,13 @@
           "suffix" : "[256]"
         },
         {
+          "position" : 2,
+          "type" : "int",
+          "name" : "flags"
+        },
+        {
           "position" : 3,
-          "type" : "u64",
+          "type" : "umode_t",
           "name" : "mode"
         }
       ]
@@ -21,7 +26,7 @@
       "args" : [
         {
           "position" : 1,
-          "type" : "u64",
+          "type" : "unsigned int",
           "name" : "fd"
         }
       ]
@@ -31,12 +36,18 @@
       "args" : [
         {
           "position" : 1,
-          "type" : "u64",
+          "type" : "unsigned int",
           "name" : "fd"
         },
         {
+          "position" : 2,
+          "type" : "char",
+          "name" : "buf",
+          "suffix": "[80]"
+        },
+        {
           "position" : 3,
-          "type" : "u64",
+          "type" : "size_t",
           "name" : "count"
         }
       ]
@@ -46,12 +57,18 @@
       "args" : [
         {
           "position" : 1,
-          "type" : "u64",
+          "type" : "unsigned int",
           "name" : "fd"
         },
         {
+          "position" : 2,
+          "type" : "char",
+          "name" : "buf",
+          "suffix": "[80]"
+        },
+        {
           "position" : 3,
-          "type" : "u64",
+          "type" : "size_t",
           "name" : "count"
         }
       ]
@@ -62,12 +79,33 @@
         {
           "position" : 1,
           "type" : "char",
-          "name" : "path",
+          "name" : "pathname",
           "suffix" : "[256]"
         },
         {
           "position" : 2,
-          "type" : "u64",
+          "type" : "umode_t",
+          "name" : "mode"
+        }
+      ]
+    },
+    {
+      "name" : "mkdirat",
+      "args" : [
+        {
+          "position" : 1,
+          "type" : "int",
+          "name" : "dfd"
+        },
+        {
+          "position" : 2,
+          "type" : "char",
+          "name" : "pathname",
+          "suffix" : "[256]"
+        },
+        {
+          "position" : 3,
+          "type" : "umode_t",
           "name" : "mode"
         }
       ]
@@ -78,12 +116,12 @@
         {
           "position" : 1,
           "type" : "char",
-          "name" : "path",
+          "name" : "filename",
           "suffix" : "[256]"
         },
         {
           "position" : 2,
-          "type" : "u64",
+          "type" : "umode_t",
           "name" : "mode"
         }
       ]
@@ -93,12 +131,12 @@
       "args" : [
         {
           "position" : 1,
-          "type" : "u64",
-          "name" : "dfd"
+          "type" : "unsigned int",
+          "name" : "fd"
         },
         {
           "position" : 2,
-          "type" : "u64",
+          "type" : "umode_t",
           "name" : "mode"
         }
       ]
@@ -108,18 +146,18 @@
       "args" : [
         {
           "position" : 1,
-          "type" : "u64",
+          "type" : "int",
           "name" : "dfd"
         },
         {
           "position" : 2,
           "type" : "char",
-          "name" : "path",
+          "name" : "filename",
           "suffix" : "[256]"
         },
         {
           "position" : 3,
-          "type" : "u64",
+          "type" : "umode_t",
           "name" : "mode"
         }
       ]
@@ -129,18 +167,18 @@
         {
           "position" : 1,
           "type" : "char",
-          "name" : "path",
+          "name" : "filename",
           "suffix" : "[256]"
         },
         {
           "position" : 2,
-          "type" : "u64",
-          "name" : "uid"
+          "type" : "uid_t",
+          "name" : "user"
         },
         {
           "position" : 3,
-          "type" : "u64",
-          "name" : "gid"
+          "type" : "gid_t",
+          "name" : "group"
         }
       ]
     },
@@ -149,24 +187,18 @@
       "args" : [
         {
           "position" : 1,
-          "type" : "char",
-          "name" : "path",
-          "suffix" : "[256]"
-        },
-        {
-          "position" : 2,
-          "type" : "u64",
+          "type" : "unsigned int",
           "name" : "fd"
         },
         {
-          "position" : 3,
-          "type" : "u64",
-          "name" : "uid"
+          "position" : 2,
+          "type" : "uid_t",
+          "name" : "user"
         },
         {
-          "position" : 4,
-          "type" : "u64",
-          "name" : "gid"
+          "position" : 3,
+          "type" : "gid_t",
+          "name" : "group"
         }
       ]
     },
@@ -175,24 +207,29 @@
       "args" : [
         {
           "position" : 1,
-          "type" : "char",
-          "name" : "path",
-          "suffix" : "[256]"
+          "type" : "int",
+          "name" : "dfd"
         },
         {
           "position" : 2,
-          "type" : "u64",
-          "name" : "fd"
+          "type" : "char",
+          "name" : "filename",
+          "suffix" : "[256]"
         },
         {
           "position" : 3,
-          "type" : "u64",
-          "name" : "uid"
+          "type" : "uid_t",
+          "name" : "user"
         },
         {
           "position" : 4,
-          "type" : "u64",
-          "name" : "gid"
+          "type" : "gid_t",
+          "name" : "group"
+        },
+        {
+          "position" : 5,
+          "type" : "int",
+          "name" : "flag"
         }
       ]
     }

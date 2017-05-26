@@ -1,23 +1,25 @@
 
-0
-opencharfilename"[256]u64mode
-
-closeu64fd
-$
-writeu64fdu64count
-#
-readu64fdu64count
--
-mkdircharpath"[256]u64mode
--
-chmodcharpath"[256]u64mode
-%
-fchmodu64dfdu64mode
->
-fchmodatu64dfdcharpath"[256]u64mode
-:
-chowncharpath"[256]u64uidu64gid
-H
-fchowncharpath"[256]u64fdu64uidu64gid
-J
-fchownatcharpath"[256]u64fdu64uidu64gid
+D
+opencharfilename"[256]intflagsumode_tmode
+
+closeunsigned intfd
+E
+writeunsigned intfdcharbuf"[80]size_tcount
+D
+readunsigned intfdcharbuf"[80]size_tcount
+5
+mkdircharpathname"[256]umode_tmode
+E
+mkdiratintdfdcharpathname"[256]umode_tmode
+5
+chmodcharfilename"[256]umode_tmode
+1
+fchmodunsigned intfdumode_tmode
+F
+fchmodatintdfdcharfilename"[256]umode_tmode
+E
+chowncharfilename"[256]uid_tusergid_tgroup
+A
+fchownunsigned intfduid_tusergid_tgroup
+e
+fchownatintdfdcharfilename"[256]uid_tusergid_tgroupintflag

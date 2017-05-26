@@ -14,9 +14,9 @@ import (
 // this has to match the struct in trace_syscalls.c and handlers.
 type ReadEvent struct {
 	Timestamp uint64
+	Pid       int64
+	Ret       int64
 	Syscall   [64]byte
-	Pid       uint32
-	Ret       int32
 }
 
 type Tracer struct {
