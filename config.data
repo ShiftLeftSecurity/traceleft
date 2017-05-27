@@ -1,25 +1,25 @@
 
 D
-opencharfilename"[256]intflagsumode_tmode
+opencharfilename"[256]s64flagsumode_tmode
 
 closeunsigned intfd
-E
-writeunsigned intfdcharbuf"[80]size_tcount
-D
-readunsigned intfdcharbuf"[80]size_tcount
+L
+writeunsigned intfdcharbuf"[256]unsigned intcount
+K
+readunsigned intfdcharbuf"[256]unsigned intcount
 5
 mkdircharpathname"[256]umode_tmode
 E
-mkdiratintdfdcharpathname"[256]umode_tmode
+mkdirats64dfdcharpathname"[256]umode_tmode
 5
 chmodcharfilename"[256]umode_tmode
 1
 fchmodunsigned intfdumode_tmode
 F
-fchmodatintdfdcharfilename"[256]umode_tmode
+fchmodats64dfdcharfilename"[256]umode_tmode
 E
 chowncharfilename"[256]uid_tusergid_tgroup
 A
 fchownunsigned intfduid_tusergid_tgroup
 e
-fchownatintdfdcharfilename"[256]uid_tusergid_tgroupintflag
+fchownats64dfdcharfilename"[256]uid_tusergid_tgroups64flag

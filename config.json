@@ -1,235 +1,236 @@
 {
   "event": [
     {
-      "name" : "open",
-      "args" : [
+      "name": "open",
+      "args": [
         {
-          "position" : 1,
-          "type" : "char",
-          "name" : "filename",
-          "suffix" : "[256]"
+          "position": 1,
+          "type": "char",
+          "name": "filename",
+          "suffix": "[256]"
         },
         {
-          "position" : 2,
-          "type" : "int",
-          "name" : "flags"
+          "position": 2,
+          "type": "s64",
+          "name": "flags"
         },
         {
-          "position" : 3,
-          "type" : "umode_t",
-          "name" : "mode"
+          "position": 3,
+          "type": "umode_t",
+          "name": "mode"
         }
       ]
     },
     {
-      "name" : "close",
-      "args" : [
+      "name": "close",
+      "args": [
         {
-          "position" : 1,
-          "type" : "unsigned int",
-          "name" : "fd"
+          "position": 1,
+          "type": "unsigned int",
+          "name": "fd"
         }
       ]
     },
     {
-      "name" : "write",
-      "args" : [
+      "name": "write",
+      "args": [
         {
-          "position" : 1,
-          "type" : "unsigned int",
-          "name" : "fd"
+          "position": 1,
+          "type": "unsigned int",
+          "name": "fd"
         },
         {
-          "position" : 2,
-          "type" : "char",
-          "name" : "buf",
-          "suffix": "[80]"
+          "position": 2,
+          "type": "char",
+          "name": "buf",
+          "suffix": "[256]"
         },
         {
-          "position" : 3,
-          "type" : "size_t",
-          "name" : "count"
+          "position": 3,
+          "type": "unsigned int",
+          "name": "count"
         }
       ]
     },
     {
-      "name" : "read",
-      "args" : [
+      "name": "read",
+      "args": [
         {
-          "position" : 1,
-          "type" : "unsigned int",
-          "name" : "fd"
+          "position": 1,
+          "type": "unsigned int",
+          "name": "fd"
         },
         {
-          "position" : 2,
-          "type" : "char",
-          "name" : "buf",
-          "suffix": "[80]"
+          "position": 2,
+          "type": "char",
+          "name": "buf",
+          "suffix": "[256]"
         },
         {
-          "position" : 3,
-          "type" : "size_t",
-          "name" : "count"
+          "position": 3,
+          "type": "unsigned int",
+          "name": "count"
         }
       ]
     },
     {
-      "name" : "mkdir",
-      "args" : [
+      "name": "mkdir",
+      "args": [
         {
-          "position" : 1,
-          "type" : "char",
-          "name" : "pathname",
-          "suffix" : "[256]"
+          "position": 1,
+          "type": "char",
+          "name": "pathname",
+          "suffix": "[256]"
         },
         {
-          "position" : 2,
-          "type" : "umode_t",
-          "name" : "mode"
+          "position": 2,
+          "type": "umode_t",
+          "name": "mode"
         }
       ]
     },
     {
-      "name" : "mkdirat",
-      "args" : [
+      "name": "mkdirat",
+      "args": [
         {
-          "position" : 1,
-          "type" : "int",
-          "name" : "dfd"
+          "position": 1,
+          "type": "s64",
+          "name": "dfd"
         },
         {
-          "position" : 2,
-          "type" : "char",
-          "name" : "pathname",
-          "suffix" : "[256]"
+          "position": 2,
+          "type": "char",
+          "name": "pathname",
+          "suffix": "[256]"
         },
         {
-          "position" : 3,
-          "type" : "umode_t",
-          "name" : "mode"
+          "position": 3,
+          "type": "umode_t",
+          "name": "mode"
         }
       ]
     },
     {
-      "name" : "chmod",
-      "args" : [
+      "name": "chmod",
+      "args": [
         {
-          "position" : 1,
-          "type" : "char",
-          "name" : "filename",
-          "suffix" : "[256]"
+          "position": 1,
+          "type": "char",
+          "name": "filename",
+          "suffix": "[256]"
         },
         {
-          "position" : 2,
-          "type" : "umode_t",
-          "name" : "mode"
+          "position": 2,
+          "type": "umode_t",
+          "name": "mode"
         }
       ]
     },
     {
-      "name" : "fchmod",
-      "args" : [
+      "name": "fchmod",
+      "args": [
         {
-          "position" : 1,
-          "type" : "unsigned int",
-          "name" : "fd"
+          "position": 1,
+          "type": "unsigned int",
+          "name": "fd"
         },
         {
-          "position" : 2,
-          "type" : "umode_t",
-          "name" : "mode"
+          "position": 2,
+          "type": "umode_t",
+          "name": "mode"
         }
       ]
     },
     {
-      "name" : "fchmodat",
-      "args" : [
+      "name": "fchmodat",
+      "args": [
         {
-          "position" : 1,
-          "type" : "int",
-          "name" : "dfd"
+          "position": 1,
+          "type": "s64",
+          "name": "dfd"
         },
         {
-          "position" : 2,
-          "type" : "char",
-          "name" : "filename",
-          "suffix" : "[256]"
+          "position": 2,
+          "type": "char",
+          "name": "filename",
+          "suffix": "[256]"
         },
         {
-          "position" : 3,
-          "type" : "umode_t",
-          "name" : "mode"
-        }
-      ]
-    },    {
-      "name" : "chown",
-      "args" : [
-        {
-          "position" : 1,
-          "type" : "char",
-          "name" : "filename",
-          "suffix" : "[256]"
-        },
-        {
-          "position" : 2,
-          "type" : "uid_t",
-          "name" : "user"
-        },
-        {
-          "position" : 3,
-          "type" : "gid_t",
-          "name" : "group"
+          "position": 3,
+          "type": "umode_t",
+          "name": "mode"
         }
       ]
     },
     {
-      "name" : "fchown",
-      "args" : [
+      "name": "chown",
+      "args": [
         {
-          "position" : 1,
-          "type" : "unsigned int",
-          "name" : "fd"
+          "position": 1,
+          "type": "char",
+          "name": "filename",
+          "suffix": "[256]"
         },
         {
-          "position" : 2,
-          "type" : "uid_t",
-          "name" : "user"
+          "position": 2,
+          "type": "uid_t",
+          "name": "user"
         },
         {
-          "position" : 3,
-          "type" : "gid_t",
-          "name" : "group"
+          "position": 3,
+          "type": "gid_t",
+          "name": "group"
         }
       ]
     },
     {
-      "name" : "fchownat",
-      "args" : [
+      "name": "fchown",
+      "args": [
         {
-          "position" : 1,
-          "type" : "int",
-          "name" : "dfd"
+          "position": 1,
+          "type": "unsigned int",
+          "name": "fd"
         },
         {
-          "position" : 2,
-          "type" : "char",
-          "name" : "filename",
-          "suffix" : "[256]"
+          "position": 2,
+          "type": "uid_t",
+          "name": "user"
         },
         {
-          "position" : 3,
-          "type" : "uid_t",
-          "name" : "user"
+          "position": 3,
+          "type": "gid_t",
+          "name": "group"
+        }
+      ]
+    },
+    {
+      "name": "fchownat",
+      "args": [
+        {
+          "position": 1,
+          "type": "s64",
+          "name": "dfd"
         },
         {
-          "position" : 4,
-          "type" : "gid_t",
-          "name" : "group"
+          "position": 2,
+          "type": "char",
+          "name": "filename",
+          "suffix": "[256]"
         },
         {
-          "position" : 5,
-          "type" : "int",
-          "name" : "flag"
+          "position": 3,
+          "type": "uid_t",
+          "name": "user"
+        },
+        {
+          "position": 4,
+          "type": "gid_t",
+          "name": "group"
+        },
+        {
+          "position": 5,
+          "type": "s64",
+          "name": "flag"
         }
       ]
     }

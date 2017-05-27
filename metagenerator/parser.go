@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+	"github.com/ShiftLeftSecurity/traceleft/generator"
+	"encoding/json"
 )
 
 // TODO: make slice sizes fixed so we can decode it with binary.Read(),
@@ -384,7 +386,7 @@ var (
 const goStructTemplate = `
 type {{ .Name }} struct {
 	{{- range $index, $param := .Params }}
-	{{ $param.Name }} {{ $param.Typ }}
+	{{ $param.Name }} {{ $param.Type }}
 	{{- end }}
 }
 `
@@ -396,16 +398,16 @@ typedef struct {
 	long ret;
 	char syscall[64];
 	{{- range $index, $param := .Params}}
-	{{ $param.Typ }} {{ $param.Name }}{{ $param.Suffix }};
+	{{ $param.Type }} {{ $param.Name }}{{ $param.Suffix }};
 	{{- end }}
-} {{ .Name }}_t;
+} {{ .Name }}_event_t;
 `
 
 type Param struct {
-	Name string
-	Typ  string
-	Suffix string
-	Pos int
+	Position int
+	Name     string
+	Type     string
+	Suffix   string
 }
 
 type Syscall struct {
@@ -454,10 +456,10 @@ func ToCamel(s string) string {
 }
 
 func (s Param) String() string {
-	return fmt.Sprintf("{name: %v, type: %v}", s.Name, s.Typ)
+	return fmt.Sprintf("{name: %v, type: %v, suffix: %v, pos: %v}", s.Name, s.Type, s.Suffix, s.Position)
 }
 
-func parseLine(l string) (*Param, *Param, error) {
+func parseLine(l string, idx int) (*Param, *Param, error) {
 	re := regexp.MustCompile(`\s+field:(?P<type>.*?) (?P<name>[a-z_0-9]+);.*`)
 	n1 := re.SubexpNames()
 
@@ -486,13 +488,13 @@ func parseLine(l string) (*Param, *Param, error) {
 
 	var goParam Param
 	goParam.Name = ToCamel(mp["name"])
-	goParam.Typ = goTypeConversions[mp["type"]]
+	goParam.Type = goTypeConversions[mp["type"]]
 	goParam.Suffix = ""
-	goParam.Pos = 0
+	goParam.Position = 0
 
 	var cParam Param
 	cParam.Name = mp["name"]
-	cParam.Typ = cTypeConversions[mp["type"]]
+	cParam.Type = cTypeConversions[mp["type"]]
 
 	// TODO : Separate this function when types to check start increasing
 	// Build suffix here for expected char pointer. Consider all chars need suffix
@@ -501,16 +503,19 @@ func parseLine(l string) (*Param, *Param, error) {
 	} else {
 		cParam.Suffix = ""
 	}
-	cParam.Pos = 0
-	//cParam.Typ = cTypeConversions[mp["type"]]
+	// The position is calculated based on the event format. The actual parameters
+	// start from 8th index, hence we subtract that from idx to get position
+	// of the parameter to the syscall
+	cParam.Position = idx - 8
+	//TODO: Add position info here and use the Param struct to populate parameter reading in kretprobe handler
 
 	return &goParam, &cParam, nil
 }
 
 var genericParams = []Param{
-	{"Timestamp", "uint64", "", 0},
-	{"Pid", "int64", "", 0},
-	{"Ret", "int64", "", 0},
+	{0,"Timestamp", "uint64", ""},
+	{0,"Pid", "int64", ""},
+	{0,"Ret", "int64", ""},
 }
 
 func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
@@ -519,7 +524,7 @@ func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
 
 	goParams := genericParams
 	var cParams []Param
-	for _, line := range syscallParts {
+	for idx, line := range syscallParts {
 		if !skipped {
 			if len(line) != 0 {
 				continue
@@ -527,7 +532,7 @@ func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
 				skipped = true
 			}
 		}
-		gp, cp, err := parseLine(line)
+		gp, cp, err := parseLine(line, idx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -544,7 +549,7 @@ func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
 		Params: goParams,
 	},
 		&Syscall{
-		Name:   fmt.Sprintf("%s%s", name, "_event"),
+		Name:   fmt.Sprintf("%s", name),
 		Params: cParams,
 	}, nil
 }
@@ -605,14 +610,61 @@ func gatherSyscalls(syscallsPath string) ([]Syscall, []Syscall, error) {
 	return goSyscalls, cSyscalls, nil
 }
 
+func getMatchingEvent(event *generator.Event, syscall []Syscall) (*Syscall, error){
+	for _, sc := range syscall {
+		if event.Name == sc.Name {
+			return &sc, nil
+		}
+	}
+	return nil, fmt.Errorf("no mathing event in config")
+}
+
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintf(os.Stderr, "usage: %s GO_OUT_FILE H_OUT_FILE\n", os.Args[0])
+	if len(os.Args) != 4 {
+		fmt.Fprintf(os.Stderr, "usage: %s GO_OUT_FILE H_OUT_FILE CONFIG_FILE\n", os.Args[0])
 		os.Exit(1)
 	}
 
 	syscallsPath := `/sys/kernel/debug/tracing/events/syscalls/`
 	goSyscalls, cSyscalls, err := gatherSyscalls(syscallsPath)
+
+	// Add args to input JSON file
+	file, err := ioutil.ReadFile(os.Args[3])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error reading config: %v\n", err)
+	}
+
+	cfg := &generator.Config{}
+	if err := json.Unmarshal(file, cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "error reading config: %v\n", err)
+	}
+
+	for _, evt := range cfg.Event {
+		sc, err := getMatchingEvent(evt, cSyscalls)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			continue
+		}
+
+		// Convert to Event_Args type for JSON and add args
+		evt.Args = []*generator.Event_Args{}
+		for _, param := range sc.Params {
+			arg := generator.Event_Args{}
+			arg.Position = uint32(param.Position)
+			arg.Name = param.Name
+			arg.Type = param.Type
+			arg.Suffix = param.Suffix
+			evt.Args = append(evt.Args, &arg)
+		}
+	}
+
+	newCfg, _ := json.MarshalIndent(cfg, "", "  ")
+
+	if err := ioutil.WriteFile(os.Args[3], newCfg, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to write updated config: %v\n", err)
+	}
+
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
