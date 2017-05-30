@@ -2,9 +2,11 @@ SHELL=/bin/bash -o pipefail
 DEST_DIR=/dist
 LINUX_HEADERS=$(shell dnf list kernel-devel | awk '/^kernel-devel\..*/{print "/usr/src/kernels/"$$2".x86_64"}')
 
-all: $(addsuffix .bpf, $(basename $(wildcard *.c)))
+.PHONY: all
 
-%.bpf: %.c
+all: $(addprefix $(DEST_DIR)/, $(addsuffix .bpf, $(basename $(wildcard *.c))))
+
+$(DEST_DIR)/%.bpf: %.c
 	@mkdir -p "$(DEST_DIR)"
 	clang -D__KERNEL__ -D__ASM_SYSREG_H \
 		-DCIRCLE_BUILD_URL=\"$(CIRCLE_BUILD_URL)\" \
@@ -16,4 +18,4 @@ all: $(addsuffix .bpf, $(basename $(wildcard *.c)))
 		-Werror \
 		-O2 -emit-llvm -c $< \
 		$(foreach path,$(LINUX_HEADERS), -I $(path)/arch/x86/include -I $(path)/arch/x86/include/generated -I $(path)/include -I $(path)/include/generated/uapi -I $(path)/arch/x86/include/uapi -I $(path)/include/uapi) \
-		-o - | llc -march=bpf -filetype=obj -o "${DEST_DIR}/$@"
+		-o - | llc -march=bpf -filetype=obj -o $@
