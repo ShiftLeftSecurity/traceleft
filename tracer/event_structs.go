@@ -1,4 +1,4 @@
-package main
+package tracer
 
 import (
 	"syscall"
@@ -149,59 +149,38 @@ type UserMsghdr struct {
 // syscall data
 
 type ChmodEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Filename [256]byte
 	Mode uint64
 }
 
 type ChownEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Filename [256]byte
 	User int64
 	Group int64
 }
 
 type CloseEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Fd uint64
 }
 
 type FchmodEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Fd uint64
 	Mode uint64
 }
 
 type FchmodatEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Dfd int64
 	Filename [256]byte
 	Mode uint64
 }
 
 type FchownEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Fd uint64
 	User int64
 	Group int64
 }
 
 type FchownatEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Dfd int64
 	Filename [256]byte
 	User int64
@@ -210,44 +189,29 @@ type FchownatEvent struct {
 }
 
 type MkdirEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Pathname [256]byte
 	Mode uint64
 }
 
 type MkdiratEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Dfd int64
 	Pathname [256]byte
 	Mode uint64
 }
 
 type OpenEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Filename [256]byte
 	Flags int64
 	Mode uint64
 }
 
 type ReadEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Fd uint64
 	Buf [256]byte
 	Count int64
 }
 
 type WriteEvent struct {
-	Timestamp uint64
-	Pid int64
-	Ret int64
 	Fd uint64
 	Buf [256]byte
 	Count int64

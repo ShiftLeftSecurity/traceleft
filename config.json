@@ -26,7 +26,7 @@
       "args": [
         {
           "position": 1,
-          "type": "unsigned int",
+          "type": "u64",
           "name": "fd"
         }
       ]
@@ -36,7 +36,7 @@
       "args": [
         {
           "position": 1,
-          "type": "unsigned int",
+          "type": "u64",
           "name": "fd"
         },
         {
@@ -47,7 +47,7 @@
         },
         {
           "position": 3,
-          "type": "unsigned int",
+          "type": "int64_t",
           "name": "count"
         }
       ]
@@ -57,7 +57,7 @@
       "args": [
         {
           "position": 1,
-          "type": "unsigned int",
+          "type": "u64",
           "name": "fd"
         },
         {
@@ -68,7 +68,7 @@
         },
         {
           "position": 3,
-          "type": "unsigned int",
+          "type": "int64_t",
           "name": "count"
         }
       ]
@@ -131,7 +131,7 @@
       "args": [
         {
           "position": 1,
-          "type": "unsigned int",
+          "type": "u64",
           "name": "fd"
         },
         {
@@ -188,7 +188,7 @@
       "args": [
         {
           "position": 1,
-          "type": "unsigned int",
+          "type": "u64",
           "name": "fd"
         },
         {

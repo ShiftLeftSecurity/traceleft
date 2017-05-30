@@ -12,7 +12,7 @@ import (
 )
 
 // this has to match the struct in trace_syscalls.c and handlers.
-type ReadEvent struct {
+type CommonEvent struct {
 	Timestamp uint64
 	Pid       int64
 	Ret       int64
@@ -26,7 +26,7 @@ type Tracer struct {
 }
 
 func timestamp(data *[]byte) uint64 {
-	var event ReadEvent
+	var event CommonEvent
 	err := binary.Read(bytes.NewBuffer(*data), binary.LittleEndian, &event)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "timestamp() failed to decode received data: %v\n", err)

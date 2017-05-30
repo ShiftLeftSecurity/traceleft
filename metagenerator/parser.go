@@ -16,7 +16,7 @@ import (
 
 // TODO: make slice sizes fixed so we can decode it with binary.Read(),
 // for now it's fine since we're not using any of these yet.
-const kernelStructs = `package main
+const kernelStructs = `package tracer
 
 import (
 	"syscall"
@@ -316,7 +316,7 @@ var (
 		"siginfo_t *":                 "u64",
 		"sigset_t *":                  "u64",
 		"size_t *":                    "u64",
-		"size_t":                      "unsigned int", // varies in kernel
+		"size_t":                      "int64_t", // varies in kernel
 		"stack_t *":                   "u64",
 		"struct epoll_event *":        "u64",
 		"struct file_handle *":        "u64",
@@ -376,7 +376,7 @@ var (
 		"unsigned *":                  "u64",
 		"unsigned":                    "unsigned",
 		"unsigned int *":              "u64",
-		"unsigned int":                "unsigned int",
+		"unsigned int":                "u64",
 		"unsigned long *":             "u64",
 		"unsigned long":               "unsigned long",
 		"void *":                      "u64",
@@ -516,14 +516,17 @@ var genericParams = []Param{
 	{0,"Timestamp", "uint64", ""},
 	{0,"Pid", "int64", ""},
 	{0,"Ret", "int64", ""},
+	{0,"Syscall", "[64]byte", ""},
+
 }
 
 func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
 	syscallParts := strings.Split(format, "\n")
 	var skipped bool
 
-	goParams := genericParams
+	//goParams := genericParams
 	var cParams []Param
+	var goParams []Param
 	for idx, line := range syscallParts {
 		if !skipped {
 			if len(line) != 0 {

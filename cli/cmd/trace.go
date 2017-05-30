@@ -16,6 +16,7 @@ import (
 
 	"github.com/ShiftLeftSecurity/traceleft/probe"
 	"github.com/ShiftLeftSecurity/traceleft/tracer"
+	"reflect"
 )
 
 import "C"
@@ -66,16 +67,52 @@ func init() {
 	RootCmd.AddCommand(traceCmd)
 }
 
+var SyscallEventMap = map[string]interface{}{
+	"open":     tracer.OpenEvent{},
+	"close":    tracer.CloseEvent{},
+	"read":     tracer.ReadEvent{},
+	"write":    tracer.WriteEvent{},
+	"mkdir":    tracer.MkdirEvent{},
+	"mkdirat":  tracer.MkdiratEvent{},
+	"chmod":    tracer.ChmodEvent{},
+	"fchmod":   tracer.FchmodEvent{},
+	"fchmodat": tracer.FchmodatEvent{},
+	"chown":    tracer.ChownEvent{},
+	"fchown":   tracer.FchownEvent{},
+	"fchownat": tracer.FchownatEvent{},
+}
+
+func dispatchToLog(syscall *C.char, buf *bytes.Buffer) error {
+	event := SyscallEventMap[C.GoString(syscall)]
+	ev := reflect.New(reflect.TypeOf(event)).Interface()
+	err := binary.Read(buf, binary.LittleEndian, ev)
+	if err != nil {
+		return err
+	}
+
+	// TODO: This needs to be specialized based on event struct type for now, we test with WriteEvent
+	wEv := ev.(*tracer.WriteEvent)
+	fmt.Printf("count %d fd %d\n", wEv.Count, wEv.Fd)
+	return nil
+}
+
 func handleEvent(data *[]byte) {
-	var event tracer.ReadEvent
-	err := binary.Read(bytes.NewBuffer(*data), binary.LittleEndian, &event)
+	var cev tracer.CommonEvent
+	buf := bytes.NewBuffer(*data)
+	err := binary.Read(buf, binary.LittleEndian, &cev)
 	if err != nil {
 		fmt.Printf("failed to decode received data: %v\n", err)
 		return
 	}
-	syscall := (*C.char)(unsafe.Pointer(&event.Syscall))
-	fmt.Printf("syscall %s pid %d return value %d\n",
-		C.GoString(syscall), event.Pid, event.Ret)
+	syscall := (*C.char)(unsafe.Pointer(&cev.Syscall))
+	fmt.Printf("syscall %s pid %d return value %d ",
+		C.GoString(syscall), cev.Pid, cev.Ret)
+	err = dispatchToLog(syscall, buf)
+	if err != nil {
+		fmt.Printf("failed to dispatch event for log: %v\n", err)
+		return
+	}
+
 }
 
 func registerEvents(bpfModule *elflib.Module, events []Event) error {
