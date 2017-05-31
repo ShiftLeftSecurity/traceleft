@@ -65,7 +65,7 @@ func Load() (*elflib.Module, error) {
 		return nil, err
 	}
 	// FIXME move this to go-bindata?
-	globalBPF := elflib.NewModule("./bpf/out/trace_syscalls.o")
+	globalBPF := elflib.NewModule("./bpf/out/trace_syscalls.bpf")
 
 	if err := globalBPF.Load(nil); err != nil {
 		return nil, fmt.Errorf("error loading global BPF: %v", err)

@@ -1,6 +1,6 @@
 all: build
 
-.phony: build
+.PHONY: build
 
 build:
 	cd bpf && make
