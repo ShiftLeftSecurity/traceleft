@@ -1,0 +1,2 @@
+syscall write pid %PID% return value 1
+Fd 3 Buf 4 Count 1
