@@ -5,7 +5,7 @@ typedef struct {
 	long ret;
 	char syscall[64];
 	char filename[256];
-	umode_t mode;
+	u64 mode;
 } chmod_event_t;
 
 typedef struct {
@@ -32,7 +32,7 @@ typedef struct {
 	long ret;
 	char syscall[64];
 	u64 fd;
-	umode_t mode;
+	u64 mode;
 } fchmod_event_t;
 
 typedef struct {
@@ -42,7 +42,7 @@ typedef struct {
 	char syscall[64];
 	s64 dfd;
 	char filename[256];
-	umode_t mode;
+	u64 mode;
 } fchmodat_event_t;
 
 typedef struct {
@@ -73,7 +73,7 @@ typedef struct {
 	long ret;
 	char syscall[64];
 	char pathname[256];
-	umode_t mode;
+	u64 mode;
 } mkdir_event_t;
 
 typedef struct {
@@ -83,7 +83,7 @@ typedef struct {
 	char syscall[64];
 	s64 dfd;
 	char pathname[256];
-	umode_t mode;
+	u64 mode;
 } mkdirat_event_t;
 
 typedef struct {
@@ -93,7 +93,7 @@ typedef struct {
 	char syscall[64];
 	char filename[256];
 	s64 flags;
-	umode_t mode;
+	u64 mode;
 } open_event_t;
 
 typedef struct {

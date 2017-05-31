@@ -82,6 +82,16 @@ var SyscallEventMap = map[string]interface{}{
 	"fchownat": tracer.FchownatEvent{},
 }
 
+// Assume buffer truncates at 0
+func bufLen(buf []byte) int {
+	for idx := 0; idx < len(buf); idx++ {
+		if buf[idx] == 0 {
+			return idx
+		}
+	}
+	return len(buf)
+}
+
 func dispatchToLog(syscall *C.char, buf *bytes.Buffer) error {
 	event := SyscallEventMap[C.GoString(syscall)]
 	ev := reflect.New(reflect.TypeOf(event)).Interface()
@@ -90,9 +100,23 @@ func dispatchToLog(syscall *C.char, buf *bytes.Buffer) error {
 		return err
 	}
 
-	// TODO: This needs to be specialized based on event struct type for now, we test with WriteEvent
-	wEv := ev.(*tracer.WriteEvent)
-	fmt.Printf("count %d fd %d\n", wEv.Count, wEv.Fd)
+	// Get all structure elements, their types and values and print them
+	// TODO : use decent logging later on
+	elem := reflect.ValueOf(ev).Elem()
+	for i := 0; i < elem.NumField(); i++ {
+		eType := elem.Type().Field(i).Type.Kind()
+		eName := elem.Type().Field(i).Name
+		eVal := elem.Field(i)
+		switch eType.String() {
+		case "array":
+			s := fmt.Sprintf("%s", eVal)
+			strVal := s[:bufLen([]byte(s))]
+			fmt.Print(eName, ": ", string(strVal), " ")
+		default:
+			fmt.Print(eName, ": ", eVal, " ")
+		}
+	}
+	fmt.Println("")
 	return nil
 }
 

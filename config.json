@@ -16,7 +16,7 @@
         },
         {
           "position": 3,
-          "type": "umode_t",
+          "type": "u64",
           "name": "mode"
         }
       ]
@@ -84,7 +84,7 @@
         },
         {
           "position": 2,
-          "type": "umode_t",
+          "type": "u64",
           "name": "mode"
         }
       ]
@@ -105,7 +105,7 @@
         },
         {
           "position": 3,
-          "type": "umode_t",
+          "type": "u64",
           "name": "mode"
         }
       ]
@@ -121,7 +121,7 @@
         },
         {
           "position": 2,
-          "type": "umode_t",
+          "type": "u64",
           "name": "mode"
         }
       ]
@@ -136,7 +136,7 @@
         },
         {
           "position": 2,
-          "type": "umode_t",
+          "type": "u64",
           "name": "mode"
         }
       ]
@@ -157,7 +157,7 @@
         },
         {
           "position": 3,
-          "type": "umode_t",
+          "type": "u64",
           "name": "mode"
         }
       ]

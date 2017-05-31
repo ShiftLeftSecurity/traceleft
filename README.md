@@ -3,6 +3,7 @@
 ## Instructions
 
 ```
+make -C metagenerator
 make
 bin/slagent gen-handler
 make

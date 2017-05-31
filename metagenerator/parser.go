@@ -370,7 +370,7 @@ var (
 		"__u64":                       "u64",
 		"uid_t *":                     "u64",
 		"uid_t":                       "uid_t",
-		"umode_t":                     "umode_t",
+		"umode_t":                     "u64",
 		"union bpf_attr *":            "u64",
 		"unsigned char *":             "char",
 		"unsigned *":                  "u64",
