@@ -16,8 +16,6 @@ import (
 
 	"github.com/peterh/liner"
 
-	elflib "github.com/iovisor/gobpf/elf"
-
 	"github.com/ShiftLeftSecurity/traceleft/probe"
 	"github.com/ShiftLeftSecurity/traceleft/tracer"
 )
@@ -98,18 +96,20 @@ func parseEvent(line string) (*Event, error) {
 	}, nil
 }
 
-func registerEvent(bpfModule *elflib.Module, event Event) error {
-	elfBPFBytes, err := ioutil.ReadFile(event.ELFPath)
-	if err != nil {
-		return fmt.Errorf("error reading %q: %v", event.ELFPath, err)
-	}
-
+func registerEvent(p *probe.Probe, event Event) error {
 	if event.Add {
-		if err := probe.RegisterHandler(bpfModule, event.Pids, elfBPFBytes); err != nil {
+		elfBPFBytes, err := ioutil.ReadFile(event.ELFPath)
+		if err != nil {
+			return fmt.Errorf("error reading %q: %v", event.ELFPath, err)
+		}
+
+		if err := p.RegisterHandler(event.Pids, elfBPFBytes); err != nil {
 			return fmt.Errorf("error registering handler: %v", err)
 		}
 	} else {
-		return fmt.Errorf("stop not implemented yet")
+		if err := p.UnregisterHandler(event.Pids); err != nil {
+			return fmt.Errorf("error unregistering handler: %v", err)
+		}
 	}
 
 	return nil
@@ -192,7 +192,7 @@ func main() {
 				continue
 			}
 
-			if err := registerEvent(tracer.BPFModule(), *ev); err != nil {
+			if err := registerEvent(tracer.Probe, *ev); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to register event: %v\n", err)
 				continue
 			}

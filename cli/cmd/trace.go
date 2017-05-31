@@ -11,7 +11,6 @@ import (
 	"strings"
 	"unsafe"
 
-	elflib "github.com/iovisor/gobpf/elf"
 	"github.com/spf13/cobra"
 
 	"github.com/ShiftLeftSecurity/traceleft/probe"
@@ -53,7 +52,7 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	if err := registerEvents(tracer.BPFModule(), events); err != nil {
+	if err := registerEvents(tracer.Probe, events); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to register events to trace: %v\n", err)
 		os.Exit(1)
 	}
@@ -94,14 +93,14 @@ func handleEvent(data *[]byte) {
 
 }
 
-func registerEvents(bpfModule *elflib.Module, events []Event) error {
+func registerEvents(p *probe.Probe, events []Event) error {
 	for _, event := range events {
 		elfBPFBytes, err := ioutil.ReadFile(event.ELFPath)
 		if err != nil {
 			return fmt.Errorf("error reading %q: %v", event.ELFPath, err)
 		}
 
-		if err := probe.RegisterHandler(bpfModule, event.Pids, elfBPFBytes); err != nil {
+		if err := p.RegisterHandler(event.Pids, elfBPFBytes); err != nil {
 			return fmt.Errorf("error registering handler: %v", err)
 		}
 	}
