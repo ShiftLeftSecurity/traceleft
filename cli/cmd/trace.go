@@ -16,7 +16,6 @@ import (
 
 	"github.com/ShiftLeftSecurity/traceleft/probe"
 	"github.com/ShiftLeftSecurity/traceleft/tracer"
-	"reflect"
 )
 
 import "C"
@@ -67,56 +66,25 @@ func init() {
 	RootCmd.AddCommand(traceCmd)
 }
 
-var SyscallEventMap = map[string]interface{}{
-	"open":     tracer.OpenEvent{},
-	"close":    tracer.CloseEvent{},
-	"read":     tracer.ReadEvent{},
-	"write":    tracer.WriteEvent{},
-	"mkdir":    tracer.MkdirEvent{},
-	"mkdirat":  tracer.MkdiratEvent{},
-	"chmod":    tracer.ChmodEvent{},
-	"fchmod":   tracer.FchmodEvent{},
-	"fchmodat": tracer.FchmodatEvent{},
-	"chown":    tracer.ChownEvent{},
-	"fchown":   tracer.FchownEvent{},
-	"fchownat": tracer.FchownatEvent{},
-}
-
-// Assume buffer truncates at 0
-func bufLen(buf []byte) int {
-	for idx := 0; idx < len(buf); idx++ {
-		if buf[idx] == 0 {
-			return idx
+func getStruct(syscall string, buf *bytes.Buffer) (tracer.Printable, error) {
+	switch syscall {
+	case "write":
+		wEv := tracer.WriteEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &wEv); err != nil {
+			return nil, err
 		}
+		return wEv, nil
+	default:
+		return tracer.DefaultEvent{}, nil
 	}
-	return len(buf)
 }
 
-func dispatchToLog(syscall *C.char, buf *bytes.Buffer) error {
-	event := SyscallEventMap[C.GoString(syscall)]
-	ev := reflect.New(reflect.TypeOf(event)).Interface()
-	err := binary.Read(buf, binary.LittleEndian, ev)
+func dispatchToLog(syscall *C.char, buf *bytes.Buffer, ret int64) error {
+	event, err := getStruct(C.GoString(syscall), buf)
 	if err != nil {
 		return err
 	}
-
-	// Get all structure elements, their types and values and print them
-	// TODO : use decent logging later on
-	elem := reflect.ValueOf(ev).Elem()
-	for i := 0; i < elem.NumField(); i++ {
-		eType := elem.Type().Field(i).Type.Kind()
-		eName := elem.Type().Field(i).Name
-		eVal := elem.Field(i)
-		switch eType.String() {
-		case "array":
-			s := fmt.Sprintf("%s", eVal)
-			strVal := s[:bufLen([]byte(s))]
-			fmt.Print(eName, ": ", string(strVal), " ")
-		default:
-			fmt.Print(eName, ": ", eVal, " ")
-		}
-	}
-	fmt.Println("")
+	fmt.Println(event.String(ret))
 	return nil
 }
 
@@ -131,7 +99,7 @@ func handleEvent(data *[]byte) {
 	syscall := (*C.char)(unsafe.Pointer(&cev.Syscall))
 	fmt.Printf("syscall %s pid %d return value %d ",
 		C.GoString(syscall), cev.Pid, cev.Ret)
-	err = dispatchToLog(syscall, buf)
+	err = dispatchToLog(syscall, buf, cev.Ret)
 	if err != nil {
 		fmt.Printf("failed to dispatch event for log: %v\n", err)
 		return

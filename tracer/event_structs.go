@@ -1,9 +1,12 @@
 package tracer
 
 import (
+	"fmt"
 	"syscall"
 	"unsafe"
 )
+
+import "C"
 
 // kernel structures
 
@@ -215,4 +218,137 @@ type WriteEvent struct {
 	Fd uint64
 	Buf [256]byte
 	Count int64
+}
+
+// helpers for events
+
+func min(x, y int) int {
+	if x > y {
+		return y
+	}
+	return x
+}
+
+type Printable interface {
+	String(ret int64) string
+}
+
+type DefaultEvent struct{}
+
+func (w DefaultEvent) String(ret int64) string {
+	return ""
+}
+
+func (e ChmodEvent) String(ret int64) string {
+	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+	length := C.int(0)
+	if ret > 0 {
+		length = C.int(min(int(ret), len(e.Filename)))
+	}
+	bufferGo := C.GoStringN(buffer, length)
+
+	return fmt.Sprintf("Filename %s Mode %d ",bufferGo,e.Mode,)
+}
+
+func (e ChownEvent) String(ret int64) string {
+	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+	length := C.int(0)
+	if ret > 0 {
+		length = C.int(min(int(ret), len(e.Filename)))
+	}
+	bufferGo := C.GoStringN(buffer, length)
+
+	return fmt.Sprintf("Filename %s User %d Group %d ",bufferGo,e.User,e.Group,)
+}
+
+func (e CloseEvent) String(ret int64) string {
+
+	return fmt.Sprintf("Fd %d ",e.Fd,)
+}
+
+func (e FchmodEvent) String(ret int64) string {
+
+	return fmt.Sprintf("Fd %d Mode %d ",e.Fd,e.Mode,)
+}
+
+func (e FchmodatEvent) String(ret int64) string {
+	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+	length := C.int(0)
+	if ret > 0 {
+		length = C.int(min(int(ret), len(e.Filename)))
+	}
+	bufferGo := C.GoStringN(buffer, length)
+
+	return fmt.Sprintf("Dfd %d Filename %s Mode %d ",e.Dfd,bufferGo,e.Mode,)
+}
+
+func (e FchownEvent) String(ret int64) string {
+
+	return fmt.Sprintf("Fd %d User %d Group %d ",e.Fd,e.User,e.Group,)
+}
+
+func (e FchownatEvent) String(ret int64) string {
+	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+	length := C.int(0)
+	if ret > 0 {
+		length = C.int(min(int(ret), len(e.Filename)))
+	}
+	bufferGo := C.GoStringN(buffer, length)
+
+	return fmt.Sprintf("Dfd %d Filename %s User %d Group %d Flag %d ",e.Dfd,bufferGo,e.User,e.Group,e.Flag,)
+}
+
+func (e MkdirEvent) String(ret int64) string {
+	buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
+	length := C.int(0)
+	if ret > 0 {
+		length = C.int(min(int(ret), len(e.Pathname)))
+	}
+	bufferGo := C.GoStringN(buffer, length)
+
+	return fmt.Sprintf("Pathname %s Mode %d ",bufferGo,e.Mode,)
+}
+
+func (e MkdiratEvent) String(ret int64) string {
+	buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
+	length := C.int(0)
+	if ret > 0 {
+		length = C.int(min(int(ret), len(e.Pathname)))
+	}
+	bufferGo := C.GoStringN(buffer, length)
+
+	return fmt.Sprintf("Dfd %d Pathname %s Mode %d ",e.Dfd,bufferGo,e.Mode,)
+}
+
+func (e OpenEvent) String(ret int64) string {
+	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+	length := C.int(0)
+	if ret > 0 {
+		length = C.int(min(int(ret), len(e.Filename)))
+	}
+	bufferGo := C.GoStringN(buffer, length)
+
+	return fmt.Sprintf("Filename %s Flags %d Mode %d ",bufferGo,e.Flags,e.Mode,)
+}
+
+func (e ReadEvent) String(ret int64) string {
+	buffer := (*C.char)(unsafe.Pointer(&e.Buf))
+	length := C.int(0)
+	if ret > 0 {
+		length = C.int(min(int(ret), len(e.Buf)))
+	}
+	bufferGo := C.GoStringN(buffer, length)
+
+	return fmt.Sprintf("Fd %d Buf %s Count %d ",e.Fd,bufferGo,e.Count,)
+}
+
+func (e WriteEvent) String(ret int64) string {
+	buffer := (*C.char)(unsafe.Pointer(&e.Buf))
+	length := C.int(0)
+	if ret > 0 {
+		length = C.int(min(int(ret), len(e.Buf)))
+	}
+	bufferGo := C.GoStringN(buffer, length)
+
+	return fmt.Sprintf("Fd %d Buf %s Count %d ",e.Fd,bufferGo,e.Count,)
 }
