@@ -11,3 +11,4 @@ generate:
 	$(SUDO) chown $(UID) ../tracer/event_structs ../battery/event_structs
 	mv ../tracer/event_structs ../tracer/event_structs.go
 	mv ../battery/event_structs ../battery/event_structs.h
+	gofmt -w ../tracer/event_structs.go

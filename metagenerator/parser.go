@@ -419,6 +419,16 @@ func min(x, y int) int {
 	return x
 }
 
+// Assume buffer truncates at 0
+func bufLen(buf [256]byte) int {
+	for idx := 0; idx < len(buf); idx++ {
+		if buf[idx] == 0 {
+			return idx
+		}
+	}
+	return len(buf)
+}
+
 type Printable interface {
 	String(ret int64) string
 }
@@ -430,31 +440,36 @@ func (w DefaultEvent) String(ret int64) string {
 }
 `
 
-// TODO: Make this more generic by using print format map, and template functions for parameter types & names
+// TODO: Use template functions for parameter types & names, make buffer len decision generic for other syscalls
 const eventStringsTemplate = `
 func (e {{ .Name }}) String(ret int64) string {
+	{{- $name := .Name }}
 	{{- range $index, $param := .Params }}
 		{{- if or (eq $param.Name "Buf") (eq $param.Name "Filename") (eq $param.Name "Pathname") }}
 	buffer := (*C.char)(unsafe.Pointer(&e.{{ $param.Name }}))
 	length := C.int(0)
+			{{- if or (eq $name "ReadEvent") (eq $name "WriteEvent") }}
 	if ret > 0 {
 		length = C.int(min(int(ret), len(e.{{ $param.Name }})))
 	}
+			{{- else}}
+	length = C.int(bufLen(e.{{ $param.Name }}))
+			{{- end}}
 	bufferGo := C.GoStringN(buffer, length)
 		{{- end }}
-	{{- end}}
+	{{- end }}
 
 	return fmt.Sprintf("{{- range $index, $param := .Params -}}
 	{{ $param.Name }}
 	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") }} %d {{else}} %s {{ end -}}
 	{{- end }}",
 	{{- range $index, $param := .Params -}}
+		{{ if $index }},{{ end }}
 		{{- if or (eq $param.Name "Buf") (eq $param.Name "Filename") (eq $param.Name "Pathname") -}}
 			 bufferGo
 			{{- else -}}
 			 e.{{ $param.Name }}
 		{{- end -}}
-		,
 	{{- end -}})
 }
 `

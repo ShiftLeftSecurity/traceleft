@@ -1,8 +1,8 @@
 package tracer
 
 import (
-	"encoding/binary"
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"syscall"
 	"unsafe"
@@ -155,13 +155,13 @@ type UserMsghdr struct {
 
 type ChmodEvent struct {
 	Filename [256]byte
-	Mode uint64
+	Mode     uint64
 }
 
 type ChownEvent struct {
 	Filename [256]byte
-	User int64
-	Group int64
+	User     int64
+	Group    int64
 }
 
 type CloseEvent struct {
@@ -169,56 +169,56 @@ type CloseEvent struct {
 }
 
 type FchmodEvent struct {
-	Fd uint64
+	Fd   uint64
 	Mode uint64
 }
 
 type FchmodatEvent struct {
-	Dfd int64
+	Dfd      int64
 	Filename [256]byte
-	Mode uint64
+	Mode     uint64
 }
 
 type FchownEvent struct {
-	Fd uint64
-	User int64
+	Fd    uint64
+	User  int64
 	Group int64
 }
 
 type FchownatEvent struct {
-	Dfd int64
+	Dfd      int64
 	Filename [256]byte
-	User int64
-	Group int64
-	Flag int64
+	User     int64
+	Group    int64
+	Flag     int64
 }
 
 type MkdirEvent struct {
 	Pathname [256]byte
-	Mode uint64
+	Mode     uint64
 }
 
 type MkdiratEvent struct {
-	Dfd int64
+	Dfd      int64
 	Pathname [256]byte
-	Mode uint64
+	Mode     uint64
 }
 
 type OpenEvent struct {
 	Filename [256]byte
-	Flags int64
-	Mode uint64
+	Flags    int64
+	Mode     uint64
 }
 
 type ReadEvent struct {
-	Fd uint64
-	Buf [256]byte
+	Fd    uint64
+	Buf   [256]byte
 	Count int64
 }
 
 type WriteEvent struct {
-	Fd uint64
-	Buf [256]byte
+	Fd    uint64
+	Buf   [256]byte
 	Count int64
 }
 
@@ -229,6 +229,16 @@ func min(x, y int) int {
 		return y
 	}
 	return x
+}
+
+// Assume buffer truncates at 0
+func bufLen(buf [256]byte) int {
+	for idx := 0; idx < len(buf); idx++ {
+		if buf[idx] == 0 {
+			return idx
+		}
+	}
+	return len(buf)
 }
 
 type Printable interface {
@@ -244,93 +254,79 @@ func (w DefaultEvent) String(ret int64) string {
 func (e ChmodEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
-	if ret > 0 {
-		length = C.int(min(int(ret), len(e.Filename)))
-	}
+	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Filename %s Mode %d ",bufferGo,e.Mode,)
+	return fmt.Sprintf("Filename %s Mode %d ", bufferGo, e.Mode)
 }
 
 func (e ChownEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
-	if ret > 0 {
-		length = C.int(min(int(ret), len(e.Filename)))
-	}
+	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Filename %s User %d Group %d ",bufferGo,e.User,e.Group,)
+	return fmt.Sprintf("Filename %s User %d Group %d ", bufferGo, e.User, e.Group)
 }
 
 func (e CloseEvent) String(ret int64) string {
 
-	return fmt.Sprintf("Fd %d ",e.Fd,)
+	return fmt.Sprintf("Fd %d ", e.Fd)
 }
 
 func (e FchmodEvent) String(ret int64) string {
 
-	return fmt.Sprintf("Fd %d Mode %d ",e.Fd,e.Mode,)
+	return fmt.Sprintf("Fd %d Mode %d ", e.Fd, e.Mode)
 }
 
 func (e FchmodatEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
-	if ret > 0 {
-		length = C.int(min(int(ret), len(e.Filename)))
-	}
+	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Dfd %d Filename %s Mode %d ",e.Dfd,bufferGo,e.Mode,)
+	return fmt.Sprintf("Dfd %d Filename %s Mode %d ", e.Dfd, bufferGo, e.Mode)
 }
 
 func (e FchownEvent) String(ret int64) string {
 
-	return fmt.Sprintf("Fd %d User %d Group %d ",e.Fd,e.User,e.Group,)
+	return fmt.Sprintf("Fd %d User %d Group %d ", e.Fd, e.User, e.Group)
 }
 
 func (e FchownatEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
-	if ret > 0 {
-		length = C.int(min(int(ret), len(e.Filename)))
-	}
+	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Dfd %d Filename %s User %d Group %d Flag %d ",e.Dfd,bufferGo,e.User,e.Group,e.Flag,)
+	return fmt.Sprintf("Dfd %d Filename %s User %d Group %d Flag %d ", e.Dfd, bufferGo, e.User, e.Group, e.Flag)
 }
 
 func (e MkdirEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
 	length := C.int(0)
-	if ret > 0 {
-		length = C.int(min(int(ret), len(e.Pathname)))
-	}
+	length = C.int(bufLen(e.Pathname))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Pathname %s Mode %d ",bufferGo,e.Mode,)
+	return fmt.Sprintf("Pathname %s Mode %d ", bufferGo, e.Mode)
 }
 
 func (e MkdiratEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
 	length := C.int(0)
-	if ret > 0 {
-		length = C.int(min(int(ret), len(e.Pathname)))
-	}
+	length = C.int(bufLen(e.Pathname))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Dfd %d Pathname %s Mode %d ",e.Dfd,bufferGo,e.Mode,)
+	return fmt.Sprintf("Dfd %d Pathname %s Mode %d ", e.Dfd, bufferGo, e.Mode)
 }
 
 func (e OpenEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
-	if ret > 0 {
-		length = C.int(min(int(ret), len(e.Filename)))
-	}
+	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Filename %s Flags %d Mode %d ",bufferGo,e.Flags,e.Mode,)
+	return fmt.Sprintf("Filename %s Flags %d Mode %d ", bufferGo, e.Flags, e.Mode)
 }
 
 func (e ReadEvent) String(ret int64) string {
@@ -341,7 +337,7 @@ func (e ReadEvent) String(ret int64) string {
 	}
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Fd %d Buf %s Count %d ",e.Fd,bufferGo,e.Count,)
+	return fmt.Sprintf("Fd %d Buf %s Count %d ", e.Fd, bufferGo, e.Count)
 }
 
 func (e WriteEvent) String(ret int64) string {
@@ -352,7 +348,7 @@ func (e WriteEvent) String(ret int64) string {
 	}
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Fd %d Buf %s Count %d ",e.Fd,bufferGo,e.Count,)
+	return fmt.Sprintf("Fd %d Buf %s Count %d ", e.Fd, bufferGo, e.Count)
 }
 
 func GetStruct(syscall string, buf *bytes.Buffer) (Printable, error) {
