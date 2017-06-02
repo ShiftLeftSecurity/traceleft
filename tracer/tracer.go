@@ -77,7 +77,3 @@ func (t *Tracer) Stop() {
 
 	t.Probe.Close()
 }
-
-func (t *Tracer) BPFModule() *elflib.Module {
-	return t.Probe.Module
-}
