@@ -24,20 +24,23 @@ import "C"
 
 var (
 	historyFn = filepath.Join(os.TempDir(), ".liner_example_history")
-	commands  = []string{"trace", "stop", "sleep"}
+
+	commandsUsage = map[string]string{
+		"trace": "trace <pid>[,<pid>...] <path elf object>",
+		"stop":  "stop <pid>[,<pid>...]",
+		"sleep": "sleep <sec>",
+		"help":  "help [<cmd>]",
+	}
 
 	outfile     string
 	outfileLock sync.Mutex
+
+	quiet bool
 )
 
 func init() {
 	flag.StringVar(&outfile, "outfile", "", "where to write output to (defaults to stdout)")
-}
-
-type Event struct {
-	Add     bool
-	Pids    []int
-	ELFPath string
+	flag.BoolVar(&quiet, "quiet", false, "be quiet")
 }
 
 func parsePids(pidsStr string) ([]int, error) {
@@ -50,68 +53,64 @@ func parsePids(pidsStr string) ([]int, error) {
 		}
 		pids = append(pids, pid)
 	}
-
 	return pids, nil
 }
 
-func parseEvent(line string) (*Event, error) {
-	lineParts := strings.Split(line, " ")
-
-	if lineParts[0] == "sleep" {
-		if len(lineParts) != 2 {
-			return nil, fmt.Errorf("malformed command %q", line)
-		}
-		t, err := strconv.Atoi(lineParts[1])
-		if err != nil {
-			return nil, err
-		}
-		time.Sleep(time.Duration(t) * time.Second)
-		return nil, nil
+func cmdTrace(args []string, p *probe.Probe) error {
+	if len(args) != 2 {
+		return fmt.Errorf("invalid args (usage: %s): %v", commandsUsage["trace"], args)
 	}
-
-	if len(lineParts) != 3 {
-		return nil, fmt.Errorf("malformed command %q", line)
-	}
-
-	var add bool
-	switch lineParts[0] {
-	case "trace":
-		add = true
-	case "stop":
-		add = false
-	default:
-		return nil, fmt.Errorf("command not found %q", lineParts[0])
-	}
-
-	pids, err := parsePids(lineParts[1])
+	pids, err := parsePids(args[0])
 	if err != nil {
-		return nil, err
+		return err
 	}
-	ebpfFile := lineParts[2]
-
-	return &Event{
-		Add:     add,
-		Pids:    pids,
-		ELFPath: ebpfFile,
-	}, nil
+	eBPFFile := args[1]
+	elfBPFBytes, err := ioutil.ReadFile(eBPFFile)
+	if err != nil {
+		return fmt.Errorf("error reading %q: %v", eBPFFile, err)
+	}
+	if err := p.RegisterHandler(pids, elfBPFBytes); err != nil {
+		return fmt.Errorf("error registering handler: %v", err)
+	}
+	return nil
 }
 
-func registerEvent(p *probe.Probe, event Event) error {
-	if event.Add {
-		elfBPFBytes, err := ioutil.ReadFile(event.ELFPath)
-		if err != nil {
-			return fmt.Errorf("error reading %q: %v", event.ELFPath, err)
-		}
+func cmdStop(args []string, p *probe.Probe) error {
+	if len(args) != 1 {
+		return fmt.Errorf("invalid args (usage: %s): %v", commandsUsage["stop"], args)
+	}
+	pids, err := parsePids(args[0])
+	if err != nil {
+		return err
+	}
+	if err := p.UnregisterHandler(pids); err != nil {
+		return fmt.Errorf("error unregistering handler: %v", err)
+	}
+	return nil
+}
 
-		if err := p.RegisterHandler(event.Pids, elfBPFBytes); err != nil {
-			return fmt.Errorf("error registering handler: %v", err)
-		}
+func cmdSleep(args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("invalid args (usage: %s): %v", commandsUsage["sleep"], args)
+	}
+	t, err := strconv.Atoi(args[0])
+	if err != nil {
+		return err
+	}
+	time.Sleep(time.Duration(t) * time.Second)
+	return nil
+}
+
+func cmdHelp(args []string) error {
+	if len(args) > 1 {
+		fmt.Fprintf(os.Stderr, "%s\n", commandsUsage["help"])
+	} else if len(args) == 1 {
+		fmt.Fprintf(os.Stderr, "%s\n", commandsUsage[args[0]])
 	} else {
-		if err := p.UnregisterHandler(event.Pids); err != nil {
-			return fmt.Errorf("error unregistering handler: %v", err)
+		for _, usageStr := range commandsUsage {
+			fmt.Fprintf(os.Stderr, "%s\n", usageStr)
 		}
 	}
-
 	return nil
 }
 
@@ -119,7 +118,7 @@ func writeToOutfile(msg string) {
 	outfileLock.Lock()
 	defer outfileLock.Unlock()
 
-	err := ioutil.WriteFile(outfile, []byte(msg), 0644)
+	err := ioutil.WriteFile(outfile, []byte(msg), 0644|os.ModeAppend)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to write %q to %q: %v\n", msg, outfile, err)
 	}
@@ -157,7 +156,7 @@ func main() {
 	line.SetCtrlCAborts(false)
 
 	line.SetCompleter(func(line string) (c []string) {
-		for _, n := range commands {
+		for n, _ := range commandsUsage {
 			if strings.HasPrefix(n, strings.ToLower(line)) {
 				c = append(c, n)
 			}
@@ -177,30 +176,43 @@ func main() {
 	}
 	defer tracer.Stop()
 
+	if !quiet {
+		fmt.Printf("Press ^D to write history file and exit\n")
+	}
 	for {
-		if l, err := line.Prompt("$ "); err == nil {
-			if l == "" {
-				continue
-			}
-			line.AppendHistory(l)
-			ev, err := parseEvent(l)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to parse event: %v\n", err)
-				continue
-			}
-			if ev == nil {
-				continue
-			}
-
-			if err := registerEvent(tracer.Probe, *ev); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to register event: %v\n", err)
-				continue
-			}
-		} else {
+		l, err := line.Prompt("$ ")
+		if err != nil {
 			break
+		}
+		if l == "" {
+			continue
+		}
+		line.AppendHistory(l)
+		lineParts := strings.Split(l, " ")
+
+		command := lineParts[0]
+		args := lineParts[1:]
+
+		switch command {
+		case "sleep":
+			err = cmdSleep(args)
+		case "trace":
+			err = cmdTrace(args, tracer.Probe)
+		case "stop":
+			err = cmdStop(args, tracer.Probe)
+		case "help":
+			cmdHelp(args)
+		default:
+			fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Command failed: %v\n", err)
 		}
 	}
 
+	if !quiet {
+		fmt.Printf("\nStopping ...\n")
+	}
 	if f, err := os.Create(historyFn); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing history file: %v\n", err)
 	} else {
