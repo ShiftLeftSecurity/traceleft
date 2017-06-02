@@ -5,11 +5,6 @@ set -euo pipefail
 readonly testdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 outfile=""
 
-if [[ ! -x "${testdir}/cli" ]]; then
-  echo "${testdir}/cli" not build, aborting >&2
-  exit 1
-fi
-
 while getopts vo: opt; do
   case "$opt" in
     v) set -x ;;
