@@ -46,8 +46,8 @@ for dir in "${testdir}"/*; do
     expected_output="$(sed -e "s|%PID%|$pid|g" "${testdir}/${testname}/expect.log")"
 
     if diff  --ignore-all-space <(printf "%s" "${expected_output}") "${outfile}"; then
-        echo -e "\t \t \e[32m[PASSED]\e[39m"
+        echo -e "\r${status_line}\t \t \e[32m[PASSED]\e[39m"
     else
-        echo -e "\t \t \e[31m[FAILED]\e[39m"
+        echo -e "\r${status_line}\t \t \e[31m[FAILED]\e[39m"
     fi
 done
