@@ -1,6 +1,8 @@
 package tracer
 
 import (
+	"encoding/binary"
+	"bytes"
 	"fmt"
 	"syscall"
 	"unsafe"
@@ -351,4 +353,96 @@ func (e WriteEvent) String(ret int64) string {
 	bufferGo := C.GoStringN(buffer, length)
 
 	return fmt.Sprintf("Fd %d Buf %s Count %d ",e.Fd,bufferGo,e.Count,)
+}
+
+func GetStruct(syscall string, buf *bytes.Buffer) (Printable, error) {
+	switch syscall {
+
+	case "chmod":
+		ev := ChmodEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "chown":
+		ev := ChownEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "close":
+		ev := CloseEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "fchmod":
+		ev := FchmodEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "fchmodat":
+		ev := FchmodatEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "fchown":
+		ev := FchownEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "fchownat":
+		ev := FchownatEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "mkdir":
+		ev := MkdirEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "mkdirat":
+		ev := MkdiratEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "open":
+		ev := OpenEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "read":
+		ev := ReadEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	case "write":
+		ev := WriteEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
+	default:
+		return DefaultEvent{}, nil
+	}
 }

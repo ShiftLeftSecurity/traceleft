@@ -66,21 +66,8 @@ func init() {
 	RootCmd.AddCommand(traceCmd)
 }
 
-func getStruct(syscall string, buf *bytes.Buffer) (tracer.Printable, error) {
-	switch syscall {
-	case "write":
-		wEv := tracer.WriteEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &wEv); err != nil {
-			return nil, err
-		}
-		return wEv, nil
-	default:
-		return tracer.DefaultEvent{}, nil
-	}
-}
-
 func dispatchToLog(syscall *C.char, buf *bytes.Buffer, ret int64) error {
-	event, err := getStruct(C.GoString(syscall), buf)
+	event, err := tracer.GetStruct(C.GoString(syscall), buf)
 	if err != nil {
 		return err
 	}

@@ -5,13 +5,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ShiftLeftSecurity/traceleft/generator"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"text/template"
+
+	"github.com/ShiftLeftSecurity/traceleft/generator"
 )
 
 // TODO: make slice sizes fixed so we can decode it with binary.Read(),
@@ -19,6 +20,8 @@ import (
 const kernelStructs = `package tracer
 
 import (
+	"encoding/binary"
+	"bytes"
 	"fmt"
 	"syscall"
 	"unsafe"
@@ -456,6 +459,27 @@ func (e {{ .Name }}) String(ret int64) string {
 }
 `
 
+const getStructPreamble = `
+func GetStruct(syscall string, buf *bytes.Buffer) (Printable, error) {
+	switch syscall {
+`
+
+const getStructTemplate = `
+	case "{{ .RawName }}":
+		ev := {{ .Name }}{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+`
+
+const getStructEpilogue = `
+	default:
+		return DefaultEvent{}, nil
+	}
+}
+`
+
 type Param struct {
 	Position int
 	Name     string
@@ -464,8 +488,9 @@ type Param struct {
 }
 
 type Syscall struct {
-	Name   string
-	Params []Param
+	Name    string
+	RawName string
+	Params  []Param
 }
 
 var consideredSyscalls = map[string]struct{}{
@@ -589,12 +614,14 @@ func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
 	}
 
 	return &Syscall{
-			Name:   fmt.Sprintf("%s%s", ToCamel(name), "Event"),
-			Params: goParams,
+			Name:    fmt.Sprintf("%s%s", ToCamel(name), "Event"),
+			RawName: name,
+			Params:  goParams,
 		},
 		&Syscall{
-			Name:   fmt.Sprintf("%s", name),
-			Params: cParams,
+			Name:    fmt.Sprintf("%s", name),
+			RawName: name,
+			Params:  cParams,
 		}, nil
 }
 
@@ -758,7 +785,25 @@ func main() {
 			os.Exit(1)
 		}
 		goTmpl.Execute(f, sc)
+	}
 
+	if _, err = f.WriteString(getStructPreamble); err != nil {
+		fmt.Fprintf(os.Stderr, "error writing to file: %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, sc := range goSyscalls {
+		goTmpl, err := template.New("go_getStruct").Parse(getStructTemplate)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error templating Go getStruct function: %v\n", err)
+			os.Exit(1)
+		}
+		goTmpl.Execute(f, sc)
+	}
+
+	if _, err = f.WriteString(getStructEpilogue); err != nil {
+		fmt.Fprintf(os.Stderr, "error writing to file: %v\n", err)
+		os.Exit(1)
 	}
 
 	for _, sc := range cSyscalls {
