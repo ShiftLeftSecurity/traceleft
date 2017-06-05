@@ -1,16 +1,8 @@
 #include <linux/kconfig.h>
 #include <linux/bpf.h>
+#include <linux/types.h>
 #include "bpf_helpers.h"
-
-typedef struct {
-	u64 timestamp;
-	char syscall[64];
-	int64_t pid;
-	long ret;
-	{{- range $index, $element := .Args}}
-	{{ $element.Type }} {{ $element.Name }}{{ $element.Suffix }};
-	{{- end }}
-} {{ .Name }}_event_t;
+#include "event_structs.h"
 
 #define PIN_GLOBAL_NS 2
 

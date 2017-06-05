@@ -66,16 +66,32 @@ func init() {
 	RootCmd.AddCommand(traceCmd)
 }
 
+func dispatchToLog(syscall *C.char, buf *bytes.Buffer, ret int64) error {
+	event, err := tracer.GetStruct(C.GoString(syscall), buf)
+	if err != nil {
+		return err
+	}
+	fmt.Println(event.String(ret))
+	return nil
+}
+
 func handleEvent(data *[]byte) {
-	var event tracer.ReadEvent
-	err := binary.Read(bytes.NewBuffer(*data), binary.LittleEndian, &event)
+	var cev tracer.CommonEvent
+	buf := bytes.NewBuffer(*data)
+	err := binary.Read(buf, binary.LittleEndian, &cev)
 	if err != nil {
 		fmt.Printf("failed to decode received data: %v\n", err)
 		return
 	}
-	syscall := (*C.char)(unsafe.Pointer(&event.Syscall))
-	fmt.Printf("syscall %s pid %d return value %d\n",
-		C.GoString(syscall), event.Pid, event.Ret)
+	syscall := (*C.char)(unsafe.Pointer(&cev.Syscall))
+	fmt.Printf("syscall %s pid %d return value %d ",
+		C.GoString(syscall), cev.Pid, cev.Ret)
+	err = dispatchToLog(syscall, buf, cev.Ret)
+	if err != nil {
+		fmt.Printf("failed to dispatch event for log: %v\n", err)
+		return
+	}
+
 }
 
 func registerEvents(bpfModule *elflib.Module, events []Event) error {
