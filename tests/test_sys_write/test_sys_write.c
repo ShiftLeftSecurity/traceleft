@@ -1,8 +1,13 @@
-#include <unistd.h>
-#include <fcntl.h>
+#include "../stampwait.h"
 
-int main() {
-    sleep(5);
+#include <stdio.h>
+
+int main(int argc, const char **argv) {
+    int err = stampwait(argv[1]);
+    if (err != 0) {
+        fprintf(stderr, "stampwait failed\n");
+        return 1;
+    }
     int fd = open("/tmp/test_sys_write", O_RDWR | O_CREAT, 0755);
     if(fd < 0)
         return 1;
