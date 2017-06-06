@@ -509,18 +509,18 @@ type Syscall struct {
 }
 
 var consideredSyscalls = map[string]struct{}{
-	"open":     struct{}{},
-	"close":    struct{}{},
-	"read":     struct{}{},
-	"write":    struct{}{},
-	"mkdir":    struct{}{},
-	"mkdirat":  struct{}{},
-	"chmod":    struct{}{},
-	"fchmod":   struct{}{},
-	"fchmodat": struct{}{},
-	"chown":    struct{}{},
-	"fchown":   struct{}{},
-	"fchownat": struct{}{},
+	"open":     {},
+	"close":    {},
+	"read":     {},
+	"write":    {},
+	"mkdir":    {},
+	"mkdirat":  {},
+	"chmod":    {},
+	"fchmod":   {},
+	"fchmodat": {},
+	"chown":    {},
+	"fchown":   {},
+	"fchownat": {},
 }
 
 // Converts a string to CamelCase
