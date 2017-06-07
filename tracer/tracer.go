@@ -20,7 +20,7 @@ type CommonEvent struct {
 }
 
 type Tracer struct {
-	m        *elflib.Module
+	Probe    *probe.Probe
 	perfMap  *elflib.PerfMap
 	stopChan chan struct{}
 }
@@ -37,13 +37,13 @@ func timestamp(data *[]byte) uint64 {
 }
 
 func New(callback func(*[]byte)) (*Tracer, error) {
-	globalBPF, err := probe.Load()
+	p, err := probe.New()
 	if err != nil {
 		return nil, fmt.Errorf("error loading probe: %v", err)
 	}
 
 	channel := make(chan []byte)
-	perfMap, err := elflib.InitPerfMap(globalBPF, "events", channel, nil)
+	perfMap, err := elflib.InitPerfMap(p.BPFModule(), "events", channel, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init perf map: %v", err)
 	}
@@ -65,7 +65,7 @@ func New(callback func(*[]byte)) (*Tracer, error) {
 	perfMap.PollStart()
 
 	return &Tracer{
-		m:        globalBPF,
+		Probe:    p,
 		perfMap:  perfMap,
 		stopChan: stopChan,
 	}, nil
@@ -75,9 +75,5 @@ func (t *Tracer) Stop() {
 	close(t.stopChan)
 	t.perfMap.PollStop()
 
-	t.m.Close()
-}
-
-func (t *Tracer) BPFModule() *elflib.Module {
-	return t.m
+	t.Probe.Close()
 }
