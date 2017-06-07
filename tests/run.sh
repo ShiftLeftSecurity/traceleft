@@ -17,6 +17,9 @@ declare -r outfile
 
 printf "Using outfile %s\n" "${outfile}"
 
+# Make sure credentials are cached
+sudo -l >/dev/null
+
 for dir in "${testdir}"/*; do
     testname=$(basename "${dir}")
     testsource="${testdir}/${testname}/${testname}.c"
