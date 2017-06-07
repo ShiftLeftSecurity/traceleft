@@ -331,7 +331,7 @@ func elfReadMaps(file *elf.File) (map[string]*Map, error) {
 			return nil, err
 		}
 		if len(data) != C.sizeof_struct_bpf_map_def {
-			return nil, fmt.Errorf("only one map with size %d allowed per section", C.sizeof_struct_bpf_map_def)
+			return nil, fmt.Errorf("only one map with size %d bytes allowed per section (check bpf_map_def)", C.sizeof_struct_bpf_map_def)
 		}
 
 		name := strings.TrimPrefix(section.Name, "maps/")
@@ -474,7 +474,7 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 		return err
 	}
 	if version == useCurrentKernelVersion {
-		version, err = currentVersion()
+		version, err = CurrentKernelVersion()
 		if err != nil {
 			return err
 		}
@@ -513,6 +513,7 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 			isKretprobe := strings.HasPrefix(secName, "kretprobe/")
 			isCgroupSkb := strings.HasPrefix(secName, "cgroup/skb")
 			isCgroupSock := strings.HasPrefix(secName, "cgroup/sock")
+			isSocketFilter := strings.HasPrefix(secName, "socket")
 
 			var progType uint32
 			switch {
@@ -524,9 +525,11 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 				progType = uint32(C.BPF_PROG_TYPE_CGROUP_SKB)
 			case isCgroupSock:
 				progType = uint32(C.BPF_PROG_TYPE_CGROUP_SOCK)
+			case isSocketFilter:
+				progType = uint32(C.BPF_PROG_TYPE_SOCKET_FILTER)
 			}
 
-			if isKprobe || isKretprobe || isCgroupSkb || isCgroupSock {
+			if isKprobe || isKretprobe || isCgroupSkb || isCgroupSock || isSocketFilter {
 				rdata, err := rsection.Data()
 				if err != nil {
 					return err
@@ -543,12 +546,12 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 
 				insns := (*C.struct_bpf_insn)(unsafe.Pointer(&rdata[0]))
 
-				progFd := C.bpf_prog_load(progType,
+				progFd, err := C.bpf_prog_load(progType,
 					insns, C.int(rsection.Size),
 					(*C.char)(lp), C.int(version),
 					(*C.char)(unsafe.Pointer(&b.log[0])), C.int(len(b.log)))
 				if progFd < 0 {
-					return fmt.Errorf("error while loading %q:\n%s", secName, b.log)
+					return fmt.Errorf("error while loading %q (%v):\n%s", secName, err, b.log)
 				}
 
 				switch {
@@ -564,6 +567,12 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 					fallthrough
 				case isCgroupSock:
 					b.cgroupPrograms[secName] = &CgroupProgram{
+						Name:  secName,
+						insns: insns,
+						fd:    int(progFd),
+					}
+				case isSocketFilter:
+					b.socketFilters[secName] = &SocketFilter{
 						Name:  secName,
 						insns: insns,
 						fd:    int(progFd),
@@ -584,6 +593,7 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 		isKretprobe := strings.HasPrefix(secName, "kretprobe/")
 		isCgroupSkb := strings.HasPrefix(secName, "cgroup/skb")
 		isCgroupSock := strings.HasPrefix(secName, "cgroup/sock")
+		isSocketFilter := strings.HasPrefix(secName, "socket")
 
 		var progType uint32
 		switch {
@@ -595,9 +605,11 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 			progType = uint32(C.BPF_PROG_TYPE_CGROUP_SKB)
 		case isCgroupSock:
 			progType = uint32(C.BPF_PROG_TYPE_CGROUP_SOCK)
+		case isSocketFilter:
+			progType = uint32(C.BPF_PROG_TYPE_SOCKET_FILTER)
 		}
 
-		if isKprobe || isKretprobe || isCgroupSkb || isCgroupSock {
+		if isKprobe || isKretprobe || isCgroupSkb || isCgroupSock || isSocketFilter {
 			data, err := section.Data()
 			if err != nil {
 				return err
@@ -609,12 +621,12 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 
 			insns := (*C.struct_bpf_insn)(unsafe.Pointer(&data[0]))
 
-			progFd := C.bpf_prog_load(progType,
+			progFd, err := C.bpf_prog_load(progType,
 				insns, C.int(section.Size),
 				(*C.char)(lp), C.int(version),
 				(*C.char)(unsafe.Pointer(&b.log[0])), C.int(len(b.log)))
 			if progFd < 0 {
-				return fmt.Errorf("error while loading %q:\n%s", section.Name, b.log)
+				return fmt.Errorf("error while loading %q (%v):\n%s", section.Name, err, b.log)
 			}
 
 			switch {
@@ -630,6 +642,12 @@ func (b *Module) Load(parameters map[string]SectionParams) error {
 				fallthrough
 			case isCgroupSock:
 				b.cgroupPrograms[secName] = &CgroupProgram{
+					Name:  secName,
+					insns: insns,
+					fd:    int(progFd),
+				}
+			case isSocketFilter:
+				b.socketFilters[secName] = &SocketFilter{
 					Name:  secName,
 					insns: insns,
 					fd:    int(progFd),

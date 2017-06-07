@@ -136,7 +136,7 @@
 			"importpath": "github.com/iovisor/gobpf/bpffs",
 			"repository": "https://github.com/iovisor/gobpf",
 			"vcs": "git",
-			"revision": "c51847e814b9aaf0ab90b860ead17c4f1595dc17",
+			"revision": "86637efb34fd9f26da53fff418fa8e6905eb8421",
 			"branch": "master",
 			"path": "bpffs",
 			"notests": true
@@ -145,7 +145,7 @@
 			"importpath": "github.com/iovisor/gobpf/elf",
 			"repository": "https://github.com/iovisor/gobpf",
 			"vcs": "git",
-			"revision": "2e2d15749302c58ba2ec6715283adf6380e94998",
+			"revision": "86637efb34fd9f26da53fff418fa8e6905eb8421",
 			"branch": "master",
 			"path": "/elf",
 			"notests": true
