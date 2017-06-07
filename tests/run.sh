@@ -32,6 +32,9 @@ printf "Using outfile %s\n" "${outfile}"
 # Make sure credentials are cached
 sudo -l >/dev/null
 
+# Make sure tests are up to date
+make --silent -C "${testdir}"
+
 for dir in "${testdir}"/*; do
     testname=$(basename "${dir}")
     testsource="${testdir}/${testname}/${testname}.c"
@@ -41,12 +44,6 @@ for dir in "${testdir}"/*; do
     # Only directories starting with test_ contain our tests
     if [[ "${testname}" != test_* ]]; then
         continue
-    fi
-
-    # Try building tests if they don't exists
-    if [[ ! -f "${testbinary}" ]]; then
-        echo -e "\e[33m${testname} : Compiling tests..\e[39m"
-        gcc -o "${testbinary}" "${testsource}"
     fi
 
     "${testdir}/${testname}/${testname}" "${stampfile}" &
@@ -61,7 +58,7 @@ for dir in "${testdir}"/*; do
     until [[ -f "${stampfile}" ]]; do sleep 1; done
     rm -f "${stampfile}"
 
-    echo "${testcommands}" | sudo -E go run "${testdir}/cli.go" --quiet --outfile "${outfile}"
+    echo "${testcommands}" | sudo "${testdir}/cli" --quiet --outfile "${outfile}"
 
     kill -9 "${pid}" 2>/dev/null || true
 
