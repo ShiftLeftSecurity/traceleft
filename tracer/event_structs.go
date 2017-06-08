@@ -257,7 +257,7 @@ func (e ChmodEvent) String(ret int64) string {
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Filename %s Mode %d ", bufferGo, e.Mode)
+	return fmt.Sprintf("Filename %q Mode %d ", bufferGo, e.Mode)
 }
 
 func (e ChownEvent) String(ret int64) string {
@@ -266,7 +266,7 @@ func (e ChownEvent) String(ret int64) string {
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Filename %s User %d Group %d ", bufferGo, e.User, e.Group)
+	return fmt.Sprintf("Filename %q User %d Group %d ", bufferGo, e.User, e.Group)
 }
 
 func (e CloseEvent) String(ret int64) string {
@@ -285,7 +285,7 @@ func (e FchmodatEvent) String(ret int64) string {
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Dfd %d Filename %s Mode %d ", e.Dfd, bufferGo, e.Mode)
+	return fmt.Sprintf("Dfd %d Filename %q Mode %d ", e.Dfd, bufferGo, e.Mode)
 }
 
 func (e FchownEvent) String(ret int64) string {
@@ -299,7 +299,7 @@ func (e FchownatEvent) String(ret int64) string {
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Dfd %d Filename %s User %d Group %d Flag %d ", e.Dfd, bufferGo, e.User, e.Group, e.Flag)
+	return fmt.Sprintf("Dfd %d Filename %q User %d Group %d Flag %d ", e.Dfd, bufferGo, e.User, e.Group, e.Flag)
 }
 
 func (e MkdirEvent) String(ret int64) string {
@@ -308,7 +308,7 @@ func (e MkdirEvent) String(ret int64) string {
 	length = C.int(bufLen(e.Pathname))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Pathname %s Mode %d ", bufferGo, e.Mode)
+	return fmt.Sprintf("Pathname %q Mode %d ", bufferGo, e.Mode)
 }
 
 func (e MkdiratEvent) String(ret int64) string {
@@ -317,7 +317,7 @@ func (e MkdiratEvent) String(ret int64) string {
 	length = C.int(bufLen(e.Pathname))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Dfd %d Pathname %s Mode %d ", e.Dfd, bufferGo, e.Mode)
+	return fmt.Sprintf("Dfd %d Pathname %q Mode %d ", e.Dfd, bufferGo, e.Mode)
 }
 
 func (e OpenEvent) String(ret int64) string {
@@ -326,7 +326,7 @@ func (e OpenEvent) String(ret int64) string {
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Filename %s Flags %d Mode %d ", bufferGo, e.Flags, e.Mode)
+	return fmt.Sprintf("Filename %q Flags %d Mode %d ", bufferGo, e.Flags, e.Mode)
 }
 
 func (e ReadEvent) String(ret int64) string {
@@ -337,7 +337,7 @@ func (e ReadEvent) String(ret int64) string {
 	}
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Fd %d Buf %s Count %d ", e.Fd, bufferGo, e.Count)
+	return fmt.Sprintf("Fd %d Buf %q Count %d ", e.Fd, bufferGo, e.Count)
 }
 
 func (e WriteEvent) String(ret int64) string {
@@ -348,7 +348,7 @@ func (e WriteEvent) String(ret int64) string {
 	}
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Fd %d Buf %s Count %d ", e.Fd, bufferGo, e.Count)
+	return fmt.Sprintf("Fd %d Buf %q Count %d ", e.Fd, bufferGo, e.Count)
 }
 
 func GetStruct(syscall string, buf *bytes.Buffer) (Printable, error) {
