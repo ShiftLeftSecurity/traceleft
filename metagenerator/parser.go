@@ -461,7 +461,7 @@ func (e {{ .Name }}) String(ret int64) string {
 
 	return fmt.Sprintf("{{- range $index, $param := .Params -}}
 	{{ $param.Name }}
-	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") }} %d {{else}} %s {{ end -}}
+	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") }} %d {{else}} %q {{ end -}}
 	{{- end }}",
 	{{- range $index, $param := .Params -}}
 		{{ if $index }},{{ end }}
