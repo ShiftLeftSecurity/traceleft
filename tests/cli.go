@@ -118,8 +118,14 @@ func writeToOutfile(msg string) {
 	outfileLock.Lock()
 	defer outfileLock.Unlock()
 
-	err := ioutil.WriteFile(outfile, []byte(msg), 0644|os.ModeAppend)
+	f, err := os.OpenFile(outfile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open %q: %v\n", outfile, err)
+		return
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString(msg); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to write %q to %q: %v\n", msg, outfile, err)
 	}
 }

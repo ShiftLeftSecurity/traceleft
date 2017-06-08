@@ -69,4 +69,6 @@ for dir in "${testdir}"/*; do
     else
         echo -e "\r${status_line}\t \t \e[31m[FAILED]\e[39m"
     fi
+
+    sudo rm -f "${outfile}"
 done
