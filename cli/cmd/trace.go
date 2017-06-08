@@ -100,8 +100,10 @@ func registerEvents(p *probe.Probe, events []Event) error {
 			return fmt.Errorf("error reading %q: %v", event.ELFPath, err)
 		}
 
-		if err := p.RegisterHandler(event.Pids, elfBPFBytes); err != nil {
-			return fmt.Errorf("error registering handler: %v", err)
+		for _, pid := range event.Pids {
+			if err := p.RegisterHandler(pid, elfBPFBytes); err != nil {
+				return fmt.Errorf("error registering handler: %v", err)
+			}
 		}
 	}
 

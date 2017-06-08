@@ -5,21 +5,23 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
-	"sync"
 	"unsafe"
 
+	"github.com/hashicorp/golang-lru"
 	"github.com/iovisor/gobpf/bpffs"
 	elflib "github.com/iovisor/gobpf/elf"
 )
 
 type Probe struct {
-	sync.Mutex
+	module        *elflib.Module
+	handlerCache  *lru.Cache
+	pidToHandlers map[int][]*Handler
+}
 
-	module *elflib.Module
-
-	handler         map[string]*Handler
-	handlerRefcount map[*Handler]int
-	pidToHandlers   map[int][]*Handler
+func evictHandler(key interface{}, value interface{}) {
+	if h, ok := value.(*Handler); ok {
+		h.Close()
+	}
 }
 
 type Handler struct {
@@ -27,6 +29,7 @@ type Handler struct {
 
 	id string
 
+	// TODO find a better name for these
 	name    string
 	nameRet string
 
@@ -78,7 +81,20 @@ func newHandler(elfBPF []byte) (*Handler, error) {
 	}, nil
 }
 
-func (probe *Probe) registerHandler(pids []int, handler *Handler) error {
+func (probe *Probe) isHandling(pid int, h *Handler) bool {
+	handlers, ok := probe.pidToHandlers[pid]
+	if !ok {
+		return false
+	}
+	for _, handler := range handlers {
+		if handler.name == h.name && handler.nameRet == h.nameRet {
+			return true
+		}
+	}
+	return false
+}
+
+func (probe *Probe) registerHandler(pid int, handler *Handler) error {
 	progTable := probe.module.Map(handler.name)
 	if progTable == nil {
 		return fmt.Errorf("%q doesn't exist", handler.name)
@@ -89,73 +105,87 @@ func (probe *Probe) registerHandler(pids []int, handler *Handler) error {
 	}
 
 	var fd, fdRet int = handler.fd, handler.fdRet
-	for _, pid := range pids {
-		if err := probe.module.UpdateElement(progTable, unsafe.Pointer(&pid), unsafe.Pointer(&fd), 0); err != nil {
-			return fmt.Errorf("error updating %q: %v", progTable.Name, err)
-		}
-		if err := probe.module.UpdateElement(progTableRet, unsafe.Pointer(&pid), unsafe.Pointer(&fdRet), 0); err != nil {
-			return fmt.Errorf("error updating %q: %v", progTableRet.Name, err)
-		}
+	if err := probe.module.UpdateElement(progTable, unsafe.Pointer(&pid), unsafe.Pointer(&fd), 0); err != nil {
+		return fmt.Errorf("error updating %q: %v", progTable.Name, err)
+	}
+	if err := probe.module.UpdateElement(progTableRet, unsafe.Pointer(&pid), unsafe.Pointer(&fdRet), 0); err != nil {
+		return fmt.Errorf("error updating %q: %v", progTableRet.Name, err)
 	}
 
-	for _, pid := range pids {
-		probe.handlerRefcount[handler] += 1
+	if !probe.isHandling(pid, handler) {
 		probe.pidToHandlers[pid] = append(probe.pidToHandlers[pid], handler)
 	}
+
 	return nil
 }
 
-func (probe *Probe) RegisterHandlerById(pids []int, hash string) error {
+func (probe *Probe) RegisterHandlerById(pid int, hash string) error {
 	return fmt.Errorf("not implemented yet")
 }
 
-func (probe *Probe) RegisterHandler(pids []int, elfBPF []byte) error {
-	probe.Lock()
-	defer probe.Unlock()
-
+func (probe *Probe) getHandler(elfBPF []byte) (handler *Handler, err error) {
 	id := sha256hex(elfBPF)
-
-	_, ok := probe.handler[id]
+	val, ok := probe.handlerCache.Get(id)
 	if !ok {
-		handler, err := newHandler(elfBPF)
+		handler, err = newHandler(elfBPF)
 		if err != nil {
-			return err
+			return
 		}
-		handler.id = id
-		probe.handler[id] = handler
+
+		probe.handlerCache.Add(id, handler)
+
+		return
 	}
 
-	return probe.registerHandler(pids, probe.handler[id])
+	handler, ok = val.(*Handler)
+	if !ok {
+		return nil, fmt.Errorf("invalid type")
+	}
+
+	return
 }
 
-func (probe *Probe) UnregisterHandler(pids []int) error {
-	probe.Lock()
-	defer probe.Unlock()
-
-	for _, pid := range pids {
-		for _, handler := range probe.pidToHandlers[pid] {
-			progTable := probe.module.Map(handler.name)
-			if progTable == nil {
-				return fmt.Errorf("%q doesn't exist", handler.name)
-			}
-			progTableRet := probe.module.Map(handler.nameRet)
-			if progTableRet == nil {
-				return fmt.Errorf("%q doesn't exist", handler.nameRet)
-			}
-
-			if err := probe.module.DeleteElement(progTable, unsafe.Pointer(&pid)); err != nil {
-				return fmt.Errorf("error deleting %q: %v", progTable.Name, err)
-			}
-			if err := probe.module.DeleteElement(progTableRet, unsafe.Pointer(&pid)); err != nil {
-				return fmt.Errorf("error deleting %q: %v", progTableRet.Name, err)
-			}
-			probe.handlerRefcount[handler] -= 1
-			if probe.handlerRefcount[handler] == 0 {
-				// TODO(schu): close unused handlers
-			}
-		}
-		delete(probe.pidToHandlers, pid)
+func (probe *Probe) RegisterHandler(pid int, elfBPF []byte) error {
+	handler, err := probe.getHandler(elfBPF)
+	if err != nil {
+		return err
 	}
+
+	if err := probe.registerHandler(pid, handler); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (probe *Probe) unregisterHandler(pid int, handler *Handler) error {
+	progTable := probe.module.Map(handler.name)
+	if progTable == nil {
+		return fmt.Errorf("%q doesn't exist", handler.name)
+	}
+	progTableRet := probe.module.Map(handler.nameRet)
+	if progTableRet == nil {
+		return fmt.Errorf("%q doesn't exist", handler.nameRet)
+	}
+
+	if err := probe.module.DeleteElement(progTable, unsafe.Pointer(&pid)); err != nil {
+		return fmt.Errorf("error deleting %q: %v", progTable.Name, err)
+	}
+	if err := probe.module.DeleteElement(progTableRet, unsafe.Pointer(&pid)); err != nil {
+		return fmt.Errorf("error deleting %q: %v", progTableRet.Name, err)
+	}
+	delete(probe.pidToHandlers, pid)
+
+	return nil
+}
+
+func (probe *Probe) UnregisterHandler(pid int) error {
+	for _, handler := range probe.pidToHandlers[pid] {
+		if err := probe.unregisterHandler(pid, handler); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -191,10 +221,14 @@ func New() (*Probe, error) {
 		return nil, err
 	}
 
+	cache, err := lru.NewWithEvict(4, evictHandler)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Probe{
-		module:          globalBPF,
-		handler:         make(map[string]*Handler),
-		handlerRefcount: make(map[*Handler]int),
-		pidToHandlers:   make(map[int][]*Handler),
+		module:        globalBPF,
+		handlerCache:  cache,
+		pidToHandlers: make(map[int][]*Handler),
 	}, nil
 }

@@ -69,8 +69,10 @@ func cmdTrace(args []string, p *probe.Probe) error {
 	if err != nil {
 		return fmt.Errorf("error reading %q: %v", eBPFFile, err)
 	}
-	if err := p.RegisterHandler(pids, elfBPFBytes); err != nil {
-		return fmt.Errorf("error registering handler: %v", err)
+	for _, pid := range pids {
+		if err := p.RegisterHandler(pid, elfBPFBytes); err != nil {
+			return fmt.Errorf("error registering handler: %v", err)
+		}
 	}
 	return nil
 }
@@ -83,8 +85,10 @@ func cmdStop(args []string, p *probe.Probe) error {
 	if err != nil {
 		return err
 	}
-	if err := p.UnregisterHandler(pids); err != nil {
-		return fmt.Errorf("error unregistering handler: %v", err)
+	for _, pid := range pids {
+		if err := p.UnregisterHandler(pid); err != nil {
+			return fmt.Errorf("error unregistering handler: %v", err)
+		}
 	}
 	return nil
 }
