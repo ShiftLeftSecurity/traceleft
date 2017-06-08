@@ -8,13 +8,10 @@ int main(int argc, const char **argv) {
 		fprintf(stderr, "stampwait failed\n");
 		return 1;
 	}
-	int fd = open("/tmp/test_sys_write", O_RDWR | O_CREAT, 0755);
-	if (fd < 0)
+	int fd = open("/proc/cpuinfo", O_RDONLY, 0);
+	if (fd < 0) {
+		fprintf(stderr, "open failed\n");
 		return 1;
-
-	if (write(fd, "42", 1) != 1) {
-		close (fd);
-		return -1;
 	}
 
 	char buf[1];
