@@ -162,7 +162,7 @@ func main() {
 	line.SetCtrlCAborts(false)
 
 	line.SetCompleter(func(line string) (c []string) {
-		for n, _ := range commandsUsage {
+		for n := range commandsUsage {
 			if strings.HasPrefix(n, strings.ToLower(line)) {
 				c = append(c, n)
 			}

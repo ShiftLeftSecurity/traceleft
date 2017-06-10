@@ -44,7 +44,7 @@ func newHandler(elfBPF []byte) (*Handler, error) {
 
 	// perf map is initialized and polled from global object
 	elfSectionParams := map[string]elflib.SectionParams{
-		"maps/events": elflib.SectionParams{
+		"maps/events": {
 			SkipPerfMapInitialization: true,
 		},
 	}

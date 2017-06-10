@@ -3,9 +3,8 @@
 ## Instructions
 
 ```
-make -C metagenerator
 make
-bin/slagent gen-handler
+make handlers
 make
-sudo bin/slagent trace $PID1,$PID2:battery/out/handle_read.bpf $PID3:battery/out/handle_chown.bpf
+sudo build/bin/slagent trace $PID1,$PID2:battery/out/handle_read.bpf $PID3:battery/out/handle_chown.bpf
 ```

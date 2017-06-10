@@ -7,8 +7,8 @@ SUDO=$(shell echo "sudo -E")
 all: generate
 
 generate:
-	$(SUDO) go run parser.go ../tracer/event_structs ../battery/event_structs ../config.json
-	$(SUDO) chown $(UID) ../tracer/event_structs ../battery/event_structs
-	mv ../tracer/event_structs ../tracer/event_structs.go
-	mv ../battery/event_structs ../battery/event_structs.h
-	gofmt -w ../tracer/event_structs.go
+	$(SUDO) go run parser.go $(TRACER_DIR)/event_structs $(BATTERY_DIR)/event_structs $(CONFIG_FILE)
+	$(SUDO) chown $(UID) $(TRACER_DIR)/event_structs $(BATTERY_DIR)/event_structs
+	mv $(TRACER_DIR)/event_structs $(TRACER_DIR)/event_structs.go
+	mv $(BATTERY_DIR)/event_structs $(BATTERY_DIR)/event_structs.h
+	gofmt -w $(TRACER_DIR)/event_structs.go
