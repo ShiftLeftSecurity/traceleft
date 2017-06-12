@@ -57,7 +57,7 @@ func New(callback func(*[]byte), cacheSize int) (*Tracer, error) {
 			case <-stopChan:
 				return
 			case data := <-channel:
-				callback(&data)
+				go callback(&data)
 			}
 		}
 	}()
