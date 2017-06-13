@@ -28,10 +28,11 @@ const kernelStructs = headers + `
 package tracer
 
 import (
-	"encoding/binary"
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"net"
+	"hash/fnv"
 	"syscall"
 	"unsafe"
 )
@@ -185,6 +186,56 @@ type UserMsghdr struct {
 const maxBufferSize = 256
 
 var (
+	protoTypeConversions = map[string]string{
+		"BpfAttr":            "todo",
+		"CapUserData":        "todo",
+		"CapUserHeader":      "todo",
+		"FileHandle":         "todo",
+		"GetCPUCache":        "todo",
+		"IoCb":               "todo",
+		"IoEvent":            "todo",
+		"Itimerspec":         "todo",
+		"KexecSegment":       "todo",
+		"MqAttr":             "todo",
+		"Msgbuf":             "todo",
+		"Pollfd":             "todo",
+		"RobustListHead":     "todo",
+		"SigSet":             "todo",
+		"Sigaction":          "todo",
+		"Sigevent":           "todo",
+		"Stack":              "todo",
+		"SysctlArgs":         "todo",
+		"Timezone":           "todo",
+		"[256]byte":          "bytes",
+		"[]IoCb":             "todo",
+		"[]RobustListHead":   "todo",
+		"int16":              "int32",
+		"int32":              "int32",
+		"int64":              "int64",
+		"syscall.Dirent":     "todo",
+		"syscall.EpollEvent": "todo",
+		"syscall.FdSet":      "todo",
+		"syscall.Iovec":      "todo",
+		"syscall.Msghdr":     "todo",
+		"syscall.Rlimit":     "todo",
+		"syscall.Rusage":     "todo",
+		"syscall.Sockaddr":   "todo",
+		"syscall.Stat_t":     "todo",
+		"syscall.Statfs_t":   "todo",
+		"syscall.Sysinfo_t":  "todo",
+		"syscall.Timespec":   "todo",
+		"syscall.Timeval":    "todo",
+		"syscall.Timex":      "todo",
+		"syscall.Tms":        "todo",
+		"syscall.Ustat_t":    "todo",
+		"syscall.Utimbuf":    "todo",
+		"syscall.Utsname":    "todo",
+		"uint16":             "uint32",
+		"uint32":             "uint32",
+		"uint64":             "uint64",
+		"unsafe.Pointer":     "todo",
+	}
+
 	goTypeConversions = map[string]string{
 		"aio_context_t *":             "uint64",
 		"aio_context_t":               "uint64",
@@ -429,6 +480,38 @@ func (e ConnectV6Event) String(ret int64) string {
 		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
 
+func (e ConnectV4Event) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Saddr)
+	if err != nil {
+		return "", err
+	}
+	err = binary.Write(hash, binary.LittleEndian, e.Daddr)
+	if err != nil {
+		return "", err
+	}
+	err = binary.Write(hash, binary.LittleEndian, e.Sport)
+	if err != nil {
+		return "", err
+	}
+	err = binary.Write(hash, binary.LittleEndian, e.Dport)
+	if err != nil {
+		return "", err
+	}
+	err = binary.Write(hash, binary.LittleEndian, e.Netns)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e ConnectV4Event) Metric() *Metric {
+	return nil
+}
+
 // network helper functions
 
 func inet_ntoa(ip uint32) string {
@@ -480,14 +563,24 @@ func bufLen(buf [256]byte) int {
 	return len(buf)
 }
 
-type Printable interface {
+type Event interface {
 	String(ret int64) string
+	Hash() (string, error)
+	Metric() *Metric
 }
 
 type DefaultEvent struct{}
 
 func (w DefaultEvent) String(ret int64) string {
 	return ""
+}
+
+func (w DefaultEvent) Hash() (string, error) {
+	return "", nil
+}
+
+func (w DefaultEvent) Metric() *Metric {
+	return nil
 }
 `
 
@@ -525,8 +618,48 @@ func (e {{ .Name }}) String(ret int64) string {
 }
 `
 
+const eventProtobufTemplate = `
+func (e {{ .Syscall.Name }}) Metric() *Metric {
+	return &Metric{
+		{{ .Syscall.Name }}: &Protobuf{{ .Syscall.Name }}{
+		{{- range $index, $param := .Syscall.Params }}
+			{{- if or (eq $param.Name "Buf") (eq $param.Name "Filename") (eq $param.Name "Pathname") }}
+				{{ $param.Name }}: e.{{ $param.Name }}[:],
+			{{- else }}
+				{{ $param.Name }}: e.{{ $param.Name }},
+			{{- end }}
+		{{- end }}
+		},
+	}
+}
+`
+
+const eventHashTemplate = `
+func (e {{ .Name }}) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	{{ range $index, $param := .Params }}
+		{{ if or (eq $param.Name "Buf") }}
+			_, err = hash.Write(e.{{ $param.Name }}[:len(e.{{ $param.Name }})])
+			if err != nil {
+				return "", err
+			}
+		{{ end }}
+		{{ if or (eq $param.Type "uint64") (eq $param.Type "int64") (eq $param.Type "uint32") (eq $param.Type "int32") (eq $param.Type "uint16") (eq $param.Type "int16")}}
+			err = binary.Write(hash, binary.LittleEndian, e.{{ $param.Name }})
+			if err != nil {
+				return "", err
+			}
+		{{ end }}
+	{{ end }}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+`
+
 const getStructPreamble = `
-func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
+func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
 	switch eventName {
 `
 
@@ -574,6 +707,54 @@ const getStructEpilogue = `
 	default:
 		return DefaultEvent{}, nil
 	}
+}
+`
+
+const protoHeader = `
+syntax = "proto3";
+package tracer;
+
+message ProtobufCommonEvent {
+	uint64 Timestamp = 1;
+	int64 Pid = 2;
+	int64 Ret = 3;
+	string Name = 4;
+}
+`
+
+var tmplFuncMap = template.FuncMap{
+	"incn": func(i, n int) int {
+		return i + n
+	},
+}
+
+const protoStructTemplate = `
+message {{ .Name }} {
+	{{- range $index, $param := .Params }}
+	{{ $param.Type }} {{ $param.Name }} = {{ incn $index 1 }};
+	{{- end }}
+}
+`
+
+const protoMetricCollector = `
+service MetricCollector {
+	rpc Process (MetricCollection) returns (Empty) {}
+}
+
+message Empty {}
+
+message MetricCollection {
+	repeated Metric metrics = 1;
+}
+`
+
+const protoMetricTemplate = `
+message Metric {
+	uint64 Count = 1;
+	ProtobufCommonEvent CommonEvent = 2;
+	{{- range $index, $syscall := . }}
+	Protobuf{{ $syscall.Name }} {{ $syscall.Name }} = {{ incn $index 3 }};
+	{{- end }}
 }
 `
 
@@ -632,12 +813,12 @@ func ToCamel(s string) string {
 
 var re = regexp.MustCompile(`\s+field:(?P<type>.*?) (?P<name>[a-z_0-9]+);.*`)
 
-func parseLine(l string, idx int) (*Param, *Param, error) {
+func parseLine(l string, idx int) (*Param, *Param, *Param, error) {
 	n1 := re.SubexpNames()
 
 	r := re.FindAllStringSubmatch(l, -1)
 	if len(r) == 0 {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	res := r[0]
 
@@ -647,15 +828,15 @@ func parseLine(l string, idx int) (*Param, *Param, error) {
 	}
 
 	if _, ok := mp["type"]; !ok {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	if _, ok := mp["name"]; !ok {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
 	// ignore
 	if mp["name"] == "__syscall_nr" {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
 	var goParam Param
@@ -667,6 +848,10 @@ func parseLine(l string, idx int) (*Param, *Param, error) {
 	var cParam Param
 	cParam.Name = mp["name"]
 	cParam.Type = cTypeConversions[mp["type"]]
+
+	var protoParam Param
+	protoParam.Name = mp["name"]
+	protoParam.Type = protoTypeConversions[goParam.Type]
 
 	// TODO: Separate this function when types to check start increasing
 	// Build suffix here for expected char pointer. Consider all chars need suffix
@@ -681,15 +866,16 @@ func parseLine(l string, idx int) (*Param, *Param, error) {
 	cParam.Position = idx - 8
 	// TODO: Add position info here and use the Param struct to populate parameter reading in kretprobe handler
 
-	return &goParam, &cParam, nil
+	return &goParam, &cParam, &protoParam, nil
 }
 
-func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
+func parseSyscall(name, format string) (*Syscall, *Syscall, *Syscall, error) {
 	syscallParts := strings.Split(format, "\n")
 	var skipped bool
 
 	var cParams []Param
 	var goParams []Param
+	var protoParams []Param
 	for idx, line := range syscallParts {
 		if !skipped {
 			if len(line) != 0 {
@@ -698,15 +884,18 @@ func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
 				skipped = true
 			}
 		}
-		gp, cp, err := parseLine(line, idx)
+		gp, cp, protop, err := parseLine(line, idx)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		if gp != nil {
 			goParams = append(goParams, *gp)
 		}
 		if cp != nil {
 			cParams = append(cParams, *cp)
+		}
+		if protop != nil {
+			protoParams = append(protoParams, *protop)
 		}
 	}
 
@@ -719,12 +908,18 @@ func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
 			Name:    fmt.Sprintf("%s", name),
 			RawName: name,
 			Params:  cParams,
+		},
+		&Syscall{
+			Name:    fmt.Sprintf("%s%s%s", "Protobuf", ToCamel(name), "Event"),
+			RawName: name,
+			Params:  protoParams,
 		}, nil
 }
 
-func GatherSyscalls() ([]Syscall, []Syscall, error) {
+func GatherSyscalls() ([]Syscall, []Syscall, []Syscall, error) {
 	var goSyscalls []Syscall
 	var cSyscalls []Syscall
+	var protoSyscalls []Syscall
 
 	err := filepath.Walk(syscallsPath, func(path string, f os.FileInfo, err error) error {
 		if err != nil {
@@ -762,20 +957,21 @@ func GatherSyscalls() ([]Syscall, []Syscall, error) {
 			return err
 		}
 
-		goSyscall, cSyscall, err := parseSyscall(syscallName, string(formatBytes))
+		goSyscall, cSyscall, protoSyscall, err := parseSyscall(syscallName, string(formatBytes))
 		if err != nil {
 			return err
 		}
 
 		goSyscalls = append(goSyscalls, *goSyscall)
 		cSyscalls = append(cSyscalls, *cSyscall)
+		protoSyscalls = append(protoSyscalls, *protoSyscall)
 
 		return nil
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("error walking %q: %v", err)
+		return nil, nil, nil, fmt.Errorf("error walking %q: %v", err)
 	}
-	return goSyscalls, cSyscalls, nil
+	return goSyscalls, cSyscalls, protoSyscalls, nil
 }
 
 func GenerateGoStructs(goSyscalls []Syscall) (string, error) {
@@ -805,6 +1001,14 @@ func GenerateGoStructs(goSyscalls []Syscall) (string, error) {
 		goTmpl.Execute(buf, sc)
 	}
 
+	for _, sc := range goSyscalls {
+		goTmpl, err := template.New("go_fnv").Parse(eventHashTemplate)
+		if err != nil {
+			return "", fmt.Errorf("error templating Hash function: %v", err)
+		}
+		goTmpl.Execute(buf, sc)
+	}
+
 	if _, err := buf.WriteString(getStructPreamble); err != nil {
 		return "", fmt.Errorf("error writing to buffer: %v", err)
 	}
@@ -825,6 +1029,22 @@ func GenerateGoStructs(goSyscalls []Syscall) (string, error) {
 		return "", fmt.Errorf("error writing to buffer: %v", err)
 	}
 
+	for _, sc := range goSyscalls {
+		goTmpl, err := template.New("go_protoMessage").Parse(eventProtobufTemplate)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error templating Go protoMessage function: %v\n", err)
+			os.Exit(1)
+		}
+		tmplData := struct {
+			Syscall       Syscall
+			ProtoTypeConv map[string]string
+		}{
+			sc,
+			protoTypeConversions,
+		}
+		goTmpl.Execute(buf, tmplData)
+	}
+
 	return buf.String(), nil
 }
 
@@ -842,6 +1062,36 @@ func GenerateCStructs(cSyscalls []Syscall) (string, error) {
 		}
 		cTmpl.Execute(buf, sc)
 	}
+
+	return buf.String(), nil
+}
+
+func GenerateProtoStructs(protoSyscalls []Syscall, goSyscalls []Syscall) (string, error) {
+	buf := new(bytes.Buffer)
+
+	if _, err := buf.WriteString(headers); err != nil {
+		return "", fmt.Errorf("error writing to buffer: %v", err)
+	}
+
+	buf.Write([]byte(protoHeader))
+
+	for _, sc := range protoSyscalls {
+		tmpl, err := template.New("proto").Funcs(tmplFuncMap).Parse(protoStructTemplate)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error templating proto: %v\n", err)
+			os.Exit(1)
+		}
+		tmpl.Execute(buf, sc)
+	}
+
+	buf.Write([]byte(protoMetricCollector))
+
+	tmpl, err := template.New("proto").Funcs(tmplFuncMap).Parse(protoMetricTemplate)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error templating proto: %v\n", err)
+		os.Exit(1)
+	}
+	tmpl.Execute(buf, goSyscalls)
 
 	return buf.String(), nil
 }

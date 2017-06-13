@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"syscall"
 	"unsafe"
@@ -245,14 +246,24 @@ func bufLen(buf [256]byte) int {
 	return len(buf)
 }
 
-type Printable interface {
+type Event interface {
 	String(ret int64) string
+	Hash() (string, error)
+	Metric() *Metric
 }
 
 type DefaultEvent struct{}
 
 func (w DefaultEvent) String(ret int64) string {
 	return ""
+}
+
+func (w DefaultEvent) Hash() (string, error) {
+	return "", nil
+}
+
+func (w DefaultEvent) Metric() *Metric {
+	return nil
 }
 
 func (e ChmodEvent) String(ret int64) string {
@@ -355,7 +366,221 @@ func (e WriteEvent) String(ret int64) string {
 	return fmt.Sprintf("Fd %d Buf %q Count %d ", e.Fd, bufferGo, e.Count)
 }
 
-func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
+func (e ChmodEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Mode)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e ChownEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.User)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Group)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e CloseEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Fd)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e FchmodEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Fd)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Mode)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e FchmodatEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Dfd)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Mode)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e FchownEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Fd)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.User)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Group)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e FchownatEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Dfd)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.User)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Group)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Flag)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e MkdirEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Mode)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e MkdiratEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Dfd)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Mode)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e OpenEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Flags)
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Mode)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e ReadEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Fd)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = hash.Write(e.Buf[:len(e.Buf)])
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Count)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e WriteEvent) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Fd)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = hash.Write(e.Buf[:len(e.Buf)])
+	if err != nil {
+		return "", err
+	}
+
+	err = binary.Write(hash, binary.LittleEndian, e.Count)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
 	switch eventName {
 
 	case "chmod":
@@ -499,6 +724,38 @@ func (e ConnectV6Event) String(ret int64) string {
 		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
 
+func (e ConnectV4Event) Hash() (string, error) {
+	var err error
+	hash := fnv.New64()
+
+	err = binary.Write(hash, binary.LittleEndian, e.Saddr)
+	if err != nil {
+		return "", err
+	}
+	err = binary.Write(hash, binary.LittleEndian, e.Daddr)
+	if err != nil {
+		return "", err
+	}
+	err = binary.Write(hash, binary.LittleEndian, e.Sport)
+	if err != nil {
+		return "", err
+	}
+	err = binary.Write(hash, binary.LittleEndian, e.Dport)
+	if err != nil {
+		return "", err
+	}
+	err = binary.Write(hash, binary.LittleEndian, e.Netns)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
+}
+
+func (e ConnectV4Event) Metric() *Metric {
+	return nil
+}
+
 // network helper functions
 
 func inet_ntoa(ip uint32) string {
@@ -507,4 +764,121 @@ func inet_ntoa(ip uint32) string {
 
 func inet_ntoa6(ip [16]byte) string {
 	return fmt.Sprintf("%v", net.IP(ip[:]))
+}
+
+func (e ChmodEvent) Metric() *Metric {
+	return &Metric{
+		ChmodEvent: &ProtobufChmodEvent{
+			Filename: e.Filename[:],
+			Mode:     e.Mode,
+		},
+	}
+}
+
+func (e ChownEvent) Metric() *Metric {
+	return &Metric{
+		ChownEvent: &ProtobufChownEvent{
+			Filename: e.Filename[:],
+			User:     e.User,
+			Group:    e.Group,
+		},
+	}
+}
+
+func (e CloseEvent) Metric() *Metric {
+	return &Metric{
+		CloseEvent: &ProtobufCloseEvent{
+			Fd: e.Fd,
+		},
+	}
+}
+
+func (e FchmodEvent) Metric() *Metric {
+	return &Metric{
+		FchmodEvent: &ProtobufFchmodEvent{
+			Fd:   e.Fd,
+			Mode: e.Mode,
+		},
+	}
+}
+
+func (e FchmodatEvent) Metric() *Metric {
+	return &Metric{
+		FchmodatEvent: &ProtobufFchmodatEvent{
+			Dfd:      e.Dfd,
+			Filename: e.Filename[:],
+			Mode:     e.Mode,
+		},
+	}
+}
+
+func (e FchownEvent) Metric() *Metric {
+	return &Metric{
+		FchownEvent: &ProtobufFchownEvent{
+			Fd:    e.Fd,
+			User:  e.User,
+			Group: e.Group,
+		},
+	}
+}
+
+func (e FchownatEvent) Metric() *Metric {
+	return &Metric{
+		FchownatEvent: &ProtobufFchownatEvent{
+			Dfd:      e.Dfd,
+			Filename: e.Filename[:],
+			User:     e.User,
+			Group:    e.Group,
+			Flag:     e.Flag,
+		},
+	}
+}
+
+func (e MkdirEvent) Metric() *Metric {
+	return &Metric{
+		MkdirEvent: &ProtobufMkdirEvent{
+			Pathname: e.Pathname[:],
+			Mode:     e.Mode,
+		},
+	}
+}
+
+func (e MkdiratEvent) Metric() *Metric {
+	return &Metric{
+		MkdiratEvent: &ProtobufMkdiratEvent{
+			Dfd:      e.Dfd,
+			Pathname: e.Pathname[:],
+			Mode:     e.Mode,
+		},
+	}
+}
+
+func (e OpenEvent) Metric() *Metric {
+	return &Metric{
+		OpenEvent: &ProtobufOpenEvent{
+			Filename: e.Filename[:],
+			Flags:    e.Flags,
+			Mode:     e.Mode,
+		},
+	}
+}
+
+func (e ReadEvent) Metric() *Metric {
+	return &Metric{
+		ReadEvent: &ProtobufReadEvent{
+			Fd:    e.Fd,
+			Buf:   e.Buf[:],
+			Count: e.Count,
+		},
+	}
+}
+
+func (e WriteEvent) Metric() *Metric {
+	return &Metric{
+		WriteEvent: &ProtobufWriteEvent{
+			Fd:    e.Fd,
+			Buf:   e.Buf[:],
+			Count: e.Count,
+		},
+	}
 }

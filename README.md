@@ -11,6 +11,12 @@ sudo build/bin/slagent trace $PID1,$PID2:battery/out/handle_syscall_read.bpf $PI
 
 The `$PID` is optional and can be skipped to load a handler as default handler.
 
+In a second terminal, run the echoserver to see an event counter:
+
+```
+go run metrics/echoserver/main.go
+```
+
 ### Update Protocol Buffer golang source files
 
 The source files whith Protocol Buffer definitions are checked in to the

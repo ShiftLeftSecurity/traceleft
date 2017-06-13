@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"hash/fnv"
 	"unsafe"
 
 	elflib "github.com/iovisor/gobpf/elf"
@@ -37,10 +38,43 @@ func CommonEventFromBuffer(buf *bytes.Buffer) (*CommonEvent, error) {
 	return e, nil
 }
 
+type EventData struct {
+	Common CommonEvent
+	Event  Event
+}
+
 type Tracer struct {
 	Probe    *probe.Probe
 	perfMap  *elflib.PerfMap
 	stopChan chan struct{}
+}
+
+func (e *CommonEvent) Proto() *ProtobufCommonEvent {
+	return &ProtobufCommonEvent{
+		Timestamp: e.Timestamp,
+		Pid:       e.Pid,
+		Ret:       e.Ret,
+		Name:      e.Name,
+	}
+}
+
+func (e *CommonEvent) Hash() (string, error) {
+	hash := fnv.New64()
+
+	err := binary.Write(hash, binary.LittleEndian, e.Pid)
+	if err != nil {
+		return "", err
+	}
+	err = binary.Write(hash, binary.LittleEndian, e.Ret)
+	if err != nil {
+		return "", err
+	}
+	_, err = hash.Write([]byte(e.Name))
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum64()), nil
 }
 
 func timestamp(data *[]byte) uint64 {

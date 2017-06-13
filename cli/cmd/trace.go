@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/ShiftLeftSecurity/traceleft/metrics"
 	"github.com/ShiftLeftSecurity/traceleft/probe"
 	"github.com/ShiftLeftSecurity/traceleft/tracer"
 )
@@ -44,9 +45,19 @@ func init() {
 	traceCmd.Flags().IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
 }
 
+var eventChan chan *tracer.EventData
+
 func cmdTrace(cmd *cobra.Command, args []string) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, os.Kill)
+
+	eventChan = make(chan *tracer.EventData)
+
+	aggregator, err := metrics.NewAggregator(eventChan, 5000)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get aggregator: %v\n", err)
+		os.Exit(1)
+	}
 
 	tracer, err := tracer.New(handleEvent, handlerCacheSize)
 	if err != nil {
@@ -74,36 +85,29 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 
 	<-sig
 	tracer.Stop()
+	aggregator.Stop()
 }
 
 func init() {
 	RootCmd.AddCommand(traceCmd)
 }
 
-func dispatchToLog(name string, buf *bytes.Buffer, ret int64) error {
-	event, err := tracer.GetStruct(name, buf)
-	if err != nil {
-		return err
-	}
-	fmt.Println(event.String(ret))
-	return nil
-}
-
 func handleEvent(data *[]byte) {
 	buf := bytes.NewBuffer(*data)
 	commonEvent, err := tracer.CommonEventFromBuffer(buf)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to decode common event data: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to decode received data: %v\n", err)
 		return
 	}
-	fmt.Printf("name %s pid %d return value %d ",
-		commonEvent.Name, commonEvent.Pid, commonEvent.Ret)
-	err = dispatchToLog(commonEvent.Name, buf, commonEvent.Ret)
+	event, err := tracer.GetStruct(commonEvent.Name, buf)
 	if err != nil {
-		fmt.Printf("failed to dispatch event for log: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to get event struct: %v\n", err)
 		return
 	}
-
+	eventChan <- &tracer.EventData{
+		*commonEvent,
+		event,
+	}
 }
 
 func registerEvents(p *probe.Probe, events []Event) error {
