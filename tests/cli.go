@@ -125,7 +125,7 @@ func writeToOutfile(msg string) {
 	}
 	defer f.Close()
 
-	if _, err := f.WriteString(msg); err != nil {
+	if _, err := f.WriteString(msg + "\n"); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to write %q to %q: %v\n", msg, outfile, err)
 	}
 }
@@ -140,7 +140,7 @@ func handleEvent(data *[]byte) {
 	}
 	syscallCstr := (*C.char)(unsafe.Pointer(&cev.Syscall))
 	syscallName := C.GoString(syscallCstr)
-	msg := fmt.Sprintf("syscall %s pid %d return value %d\n", syscallName, cev.Pid, cev.Ret)
+	msg := fmt.Sprintf("syscall %s pid %d return value %d ", syscallName, cev.Pid, cev.Ret)
 	event, err := tracer.GetStruct(syscallName, buf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get %q struct: %v\n", syscallName, err)
@@ -149,7 +149,7 @@ func handleEvent(data *[]byte) {
 	if outfile != "" {
 		go writeToOutfile(msg + event.String(cev.Ret))
 	} else {
-		fmt.Print(msg + event.String(cev.Ret))
+		fmt.Println(msg + event.String(cev.Ret))
 	}
 }
 

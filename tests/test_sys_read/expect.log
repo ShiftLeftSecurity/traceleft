@@ -1,2 +1,1 @@
-syscall read pid %PID% return value 1
-Fd 3 Buf p Count 1
+syscall read pid %PID% return value 1 Fd 3 Buf "p" Count 1
