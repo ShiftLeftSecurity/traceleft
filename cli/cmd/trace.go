@@ -37,18 +37,18 @@ var (
 		Run: cmdTrace,
 	}
 
-	cacheSize int
+	handlerCacheSize int
 )
 
 func init() {
-	traceCmd.Flags().IntVar(&cacheSize, "cache-size", 4, "size of the eBPF handler cache")
+	traceCmd.Flags().IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
 }
 
 func cmdTrace(cmd *cobra.Command, args []string) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, os.Kill)
 
-	tracer, err := tracer.New(handleEvent, cacheSize)
+	tracer, err := tracer.New(handleEvent, handlerCacheSize)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
