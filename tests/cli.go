@@ -35,11 +35,14 @@ var (
 	outfile     string
 	outfileLock sync.Mutex
 
+	cacheSize int
+
 	quiet bool
 )
 
 func init() {
 	flag.StringVar(&outfile, "outfile", "", "where to write output to (defaults to stdout)")
+	flag.IntVar(&cacheSize, "cache-size", 4, "size of the eBPF handler cache")
 	flag.BoolVar(&quiet, "quiet", false, "be quiet")
 }
 
@@ -179,7 +182,7 @@ func main() {
 		f.Close()
 	}
 
-	tracer, err := tracer.New(handleEvent)
+	tracer, err := tracer.New(handleEvent, cacheSize)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get tracer: %v\n", err)
 		os.Exit(1)

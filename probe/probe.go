@@ -205,7 +205,7 @@ func (handler *Handler) Close() error {
 	return handler.module.Close()
 }
 
-func New() (*Probe, error) {
+func New(cacheSize int) (*Probe, error) {
 	if err := bpffs.Mount(); err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func New() (*Probe, error) {
 		return nil, err
 	}
 
-	cache, err := lru.NewWithEvict(4, evictHandler)
+	cache, err := lru.NewWithEvict(cacheSize, evictHandler)
 	if err != nil {
 		return nil, err
 	}
