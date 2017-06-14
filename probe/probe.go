@@ -2,7 +2,7 @@ package probe
 
 import (
 	"bytes"
-	"crypto/sha256"
+	"crypto/sha512"
 	"fmt"
 	"strings"
 	"unsafe"
@@ -29,15 +29,14 @@ type Handler struct {
 
 	id string
 
-	progArrayName    string
-	progArrayNameRet string
+	name string
 
 	fd    int
 	fdRet int
 }
 
-func sha256hex(d []byte) string {
-	return fmt.Sprintf("%x", sha256.Sum256(d))
+func sha512hex(d []byte) string {
+	return fmt.Sprintf("%x", sha512.Sum512(d))
 }
 
 func newHandler(elfBPF []byte) (*Handler, error) {
@@ -111,19 +110,31 @@ func (probe *Probe) registerHandler(pid int, handler *Handler) error {
 		return fmt.Errorf("error updating %q: %v", progTableRet.Name, err)
 	}
 
-	if !probe.isHandling(pid, handler) {
-		probe.pidToHandlers[pid] = append(probe.pidToHandlers[pid], handler)
+	if _, ok := probe.pidToHandlers[pid]; !ok {
+		probe.pidToHandlers[pid] = make(map[string]struct{})
 	}
+
+	probe.pidToHandlers[pid][handler.name] = struct{}{}
 
 	return nil
 }
 
 func (probe *Probe) RegisterHandlerById(pid int, hash string) error {
-	return fmt.Errorf("not implemented yet")
+	val, ok := probe.handlerCache.Get(hash)
+	if !ok {
+		return fmt.Errorf("ELF object with hash %q not in the cache", hash)
+	}
+
+	handler, ok := val.(*Handler)
+	if !ok {
+		return fmt.Errorf("invalid type")
+	}
+
+	return probe.registerHandler(pid, handler)
 }
 
 func (probe *Probe) getHandler(elfBPF []byte) (handler *Handler, err error) {
-	id := sha256hex(elfBPF)
+	id := sha512hex(elfBPF)
 	val, ok := probe.handlerCache.Get(id)
 	if !ok {
 		handler, err = newHandler(elfBPF)
