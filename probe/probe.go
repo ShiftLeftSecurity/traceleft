@@ -29,9 +29,8 @@ type Handler struct {
 
 	id string
 
-	// TODO find a better name for these
-	name    string
-	nameRet string
+	progArrayName    string
+	progArrayNameRet string
 
 	fd    int
 	fdRet int
@@ -57,27 +56,27 @@ func newHandler(elfBPF []byte) (*Handler, error) {
 	}
 
 	var fd, fdRet int
-	var name, nameRet string
+	var progArrayName, progArrayNameRet string
 	for kp := range handlerBPF.IterKprobes() {
 		if strings.HasPrefix(kp.Name, "kprobe/") {
 			fd = kp.Fd()
-			name = fmt.Sprintf("%s_progs", strings.TrimPrefix(kp.Name, "kprobe/"))
+			progArrayName = fmt.Sprintf("%s_progs", strings.TrimPrefix(kp.Name, "kprobe/"))
 		} else if strings.HasPrefix(kp.Name, "kretprobe/") {
 			fdRet = kp.Fd()
-			nameRet = fmt.Sprintf("%s_progs_ret", strings.TrimPrefix(kp.Name, "kretprobe/"))
+			progArrayNameRet = fmt.Sprintf("%s_progs_ret", strings.TrimPrefix(kp.Name, "kretprobe/"))
 		}
 	}
 
-	if name == "" || nameRet == "" {
+	if progArrayName == "" || progArrayNameRet == "" {
 		return nil, fmt.Errorf("malformed ELF file, it should contain both a kprobe and a kretprobe")
 	}
 
 	return &Handler{
-		module:  handlerBPF,
-		name:    name,
-		nameRet: nameRet,
-		fd:      fd,
-		fdRet:   fdRet,
+		module:           handlerBPF,
+		progArrayName:    progArrayName,
+		progArrayNameRet: progArrayNameRet,
+		fd:               fd,
+		fdRet:            fdRet,
 	}, nil
 }
 
@@ -87,7 +86,7 @@ func (probe *Probe) isHandling(pid int, h *Handler) bool {
 		return false
 	}
 	for _, handler := range handlers {
-		if handler.name == h.name && handler.nameRet == h.nameRet {
+		if handler.progArrayName == h.progArrayName && handler.progArrayNameRet == h.progArrayNameRet {
 			return true
 		}
 	}
@@ -95,13 +94,13 @@ func (probe *Probe) isHandling(pid int, h *Handler) bool {
 }
 
 func (probe *Probe) registerHandler(pid int, handler *Handler) error {
-	progTable := probe.module.Map(handler.name)
+	progTable := probe.module.Map(handler.progArrayName)
 	if progTable == nil {
-		return fmt.Errorf("%q doesn't exist", handler.name)
+		return fmt.Errorf("%q doesn't exist", handler.progArrayName)
 	}
-	progTableRet := probe.module.Map(handler.nameRet)
+	progTableRet := probe.module.Map(handler.progArrayNameRet)
 	if progTableRet == nil {
-		return fmt.Errorf("%q doesn't exist", handler.nameRet)
+		return fmt.Errorf("%q doesn't exist", handler.progArrayNameRet)
 	}
 
 	var fd, fdRet int = handler.fd, handler.fdRet
@@ -159,13 +158,13 @@ func (probe *Probe) RegisterHandler(pid int, elfBPF []byte) error {
 }
 
 func (probe *Probe) unregisterHandler(pid int, handler *Handler) error {
-	progTable := probe.module.Map(handler.name)
+	progTable := probe.module.Map(handler.progArrayName)
 	if progTable == nil {
-		return fmt.Errorf("%q doesn't exist", handler.name)
+		return fmt.Errorf("%q doesn't exist", handler.progArrayName)
 	}
-	progTableRet := probe.module.Map(handler.nameRet)
+	progTableRet := probe.module.Map(handler.progArrayNameRet)
 	if progTableRet == nil {
-		return fmt.Errorf("%q doesn't exist", handler.nameRet)
+		return fmt.Errorf("%q doesn't exist", handler.progArrayNameRet)
 	}
 
 	if err := probe.module.DeleteElement(progTable, unsafe.Pointer(&pid)); err != nil {
