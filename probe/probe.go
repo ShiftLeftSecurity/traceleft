@@ -15,7 +15,7 @@ import (
 type Probe struct {
 	module        *elflib.Module
 	handlerCache  *lru.Cache                  // hash -> *Handler
-	pidToHandlers map[int]map[string]struct{} // pid -> syscalls handled
+	pidToHandlers map[int]map[string]struct{} // pid -> syscalls handled (42 -> ["handle_read": struct{}{}, "handle_write": struct{}{}])
 }
 
 func evictHandler(key interface{}, value interface{}) {
@@ -27,12 +27,12 @@ func evictHandler(key interface{}, value interface{}) {
 type Handler struct {
 	module *elflib.Module
 
-	id string
+	id string // hash of the ELF object containing the handlers
 
-	name string
+	name string // name of the syscall handler. Example: "handle_read"
 
-	fd    int
-	fdRet int
+	fd    int // file descriptor of the kprobe handler bpf program
+	fdRet int // file descriptor of the kretprobe handler bpf program
 }
 
 func sha512hex(d []byte) string {
@@ -58,19 +58,25 @@ func newHandler(elfBPF []byte) (*Handler, error) {
 	var name, nameRet string
 	for kp := range handlerBPF.IterKprobes() {
 		if strings.HasPrefix(kp.Name, "kprobe/") {
+			if name != "" {
+				return nil, fmt.Errorf("malformed ELF file, it has more than one kprobe handler")
+			}
 			fd = kp.Fd()
 			name = strings.TrimPrefix(kp.Name, "kprobe/")
 		} else if strings.HasPrefix(kp.Name, "kretprobe/") {
+			if nameRet != "" {
+				return nil, fmt.Errorf("malformed ELF file, it has more than one kretprobe handler")
+			}
 			fdRet = kp.Fd()
 			nameRet = strings.TrimPrefix(kp.Name, "kretprobe/")
 		}
 	}
 
 	if name == "" || nameRet == "" {
-		return nil, fmt.Errorf("malformed ELF file, it should contain both a kprobe and a kretprobe")
+		return nil, fmt.Errorf("malformed ELF file, it should contain both a kprobe and a kretprobe handler")
 	}
 	if strings.Compare(name, nameRet) != 0 {
-		return nil, fmt.Errorf("malformed ELF file, both kprobe and kretprobe should have the same name")
+		return nil, fmt.Errorf("malformed ELF file, both kprobe and kretprobe handlers should have the same name")
 	}
 
 	return &Handler{
@@ -119,7 +125,7 @@ func (probe *Probe) registerHandler(pid int, handler *Handler) error {
 func (probe *Probe) RegisterHandlerById(pid int, hash string) error {
 	val, ok := probe.handlerCache.Get(hash)
 	if !ok {
-		return fmt.Errorf("ELF object with hash %q not in the cache", hash)
+		return ErrNotInCache
 	}
 
 	handler, ok := val.(*Handler)
