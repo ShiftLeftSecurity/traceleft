@@ -55,23 +55,20 @@ func newHandler(elfBPF []byte) (*Handler, error) {
 	}
 
 	var fd, fdRet int
-	var progArrayName, progArrayNameRet string
+	var name, nameRet string
 	for kp := range handlerBPF.IterKprobes() {
 		if strings.HasPrefix(kp.Name, "kprobe/") {
 			fd = kp.Fd()
-			progArrayName = fmt.Sprintf("%s_progs", strings.TrimPrefix(kp.Name, "kprobe/"))
+			name = strings.TrimPrefix(kp.Name, "kprobe/")
 		} else if strings.HasPrefix(kp.Name, "kretprobe/") {
 			fdRet = kp.Fd()
-			progArrayNameRet = fmt.Sprintf("%s_progs_ret", strings.TrimPrefix(kp.Name, "kretprobe/"))
+			nameRet = strings.TrimPrefix(kp.Name, "kretprobe/")
 		}
 	}
 
-	if progArrayName == "" || progArrayNameRet == "" {
+	if name == "" || nameRet == "" {
 		return nil, fmt.Errorf("malformed ELF file, it should contain both a kprobe and a kretprobe")
 	}
-
-	name := strings.TrimSuffix(progArrayName, "_progs")
-	nameRet := strings.TrimSuffix(progArrayNameRet, "_progs_ret")
 	if strings.Compare(name, nameRet) != 0 {
 		return nil, fmt.Errorf("malformed ELF file, both kprobe and kretprobe should have the same name")
 	}
