@@ -35,11 +35,14 @@ var (
 	outfile     string
 	outfileLock sync.Mutex
 
+	handlerCacheSize int
+
 	quiet bool
 )
 
 func init() {
 	flag.StringVar(&outfile, "outfile", "", "where to write output to (defaults to stdout)")
+	flag.IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
 	flag.BoolVar(&quiet, "quiet", false, "be quiet")
 }
 
@@ -69,8 +72,10 @@ func cmdTrace(args []string, p *probe.Probe) error {
 	if err != nil {
 		return fmt.Errorf("error reading %q: %v", eBPFFile, err)
 	}
-	if err := p.RegisterHandler(pids, elfBPFBytes); err != nil {
-		return fmt.Errorf("error registering handler: %v", err)
+	for _, pid := range pids {
+		if err := p.RegisterHandler(pid, elfBPFBytes); err != nil {
+			return fmt.Errorf("error registering handler: %v", err)
+		}
 	}
 	return nil
 }
@@ -83,8 +88,10 @@ func cmdStop(args []string, p *probe.Probe) error {
 	if err != nil {
 		return err
 	}
-	if err := p.UnregisterHandler(pids); err != nil {
-		return fmt.Errorf("error unregistering handler: %v", err)
+	for _, pid := range pids {
+		if err := p.UnregisterHandler(pid); err != nil {
+			return fmt.Errorf("error unregistering handler: %v", err)
+		}
 	}
 	return nil
 }
@@ -125,7 +132,7 @@ func writeToOutfile(msg string) {
 	}
 	defer f.Close()
 
-	if _, err := f.WriteString(msg); err != nil {
+	if _, err := f.WriteString(msg + "\n"); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to write %q to %q: %v\n", msg, outfile, err)
 	}
 }
@@ -140,7 +147,7 @@ func handleEvent(data *[]byte) {
 	}
 	syscallCstr := (*C.char)(unsafe.Pointer(&cev.Syscall))
 	syscallName := C.GoString(syscallCstr)
-	msg := fmt.Sprintf("syscall %s pid %d return value %d\n", syscallName, cev.Pid, cev.Ret)
+	msg := fmt.Sprintf("syscall %s pid %d return value %d ", syscallName, cev.Pid, cev.Ret)
 	event, err := tracer.GetStruct(syscallName, buf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get %q struct: %v\n", syscallName, err)
@@ -149,7 +156,7 @@ func handleEvent(data *[]byte) {
 	if outfile != "" {
 		go writeToOutfile(msg + event.String(cev.Ret))
 	} else {
-		fmt.Print(msg + event.String(cev.Ret))
+		fmt.Println(msg + event.String(cev.Ret))
 	}
 }
 
@@ -175,7 +182,7 @@ func main() {
 		f.Close()
 	}
 
-	tracer, err := tracer.New(handleEvent)
+	tracer, err := tracer.New(handleEvent, handlerCacheSize)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get tracer: %v\n", err)
 		os.Exit(1)

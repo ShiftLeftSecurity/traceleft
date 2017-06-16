@@ -117,6 +117,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/hashicorp/golang-lru",
+			"repository": "https://github.com/hashicorp/golang-lru",
+			"vcs": "git",
+			"revision": "0a025b7e63adc15a622f29b0b2c4c3848243bbf6",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/hashicorp/hcl",
 			"repository": "https://github.com/hashicorp/hcl",
 			"vcs": "git",
@@ -145,7 +153,7 @@
 			"importpath": "github.com/iovisor/gobpf/elf",
 			"repository": "https://github.com/iovisor/gobpf",
 			"vcs": "git",
-			"revision": "86637efb34fd9f26da53fff418fa8e6905eb8421",
+			"revision": "937a3ba56a66205b8a76aef582579dec6f662cb7",
 			"branch": "master",
 			"path": "/elf",
 			"notests": true

@@ -24,23 +24,31 @@ type Event struct {
 	ELFPath string
 }
 
-var traceCmd = &cobra.Command{
-	Use:   "trace <pid>:<path elf object> ...",
-	Short: "Trace processes",
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) < 1 {
-			return fmt.Errorf("must pass at least one comma-separated <pid>:<path elf object> pair")
-		}
-		return nil
-	},
-	Run: cmdTrace,
+var (
+	traceCmd = &cobra.Command{
+		Use:   "trace <pid>:<path elf object> ...",
+		Short: "Trace processes",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 {
+				return fmt.Errorf("must pass at least one comma-separated <pid>:<path elf object> pair")
+			}
+			return nil
+		},
+		Run: cmdTrace,
+	}
+
+	handlerCacheSize int
+)
+
+func init() {
+	traceCmd.Flags().IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
 }
 
 func cmdTrace(cmd *cobra.Command, args []string) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, os.Kill)
 
-	tracer, err := tracer.New(handleEvent)
+	tracer, err := tracer.New(handleEvent, handlerCacheSize)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
@@ -100,8 +108,10 @@ func registerEvents(p *probe.Probe, events []Event) error {
 			return fmt.Errorf("error reading %q: %v", event.ELFPath, err)
 		}
 
-		if err := p.RegisterHandler(event.Pids, elfBPFBytes); err != nil {
-			return fmt.Errorf("error registering handler: %v", err)
+		for _, pid := range event.Pids {
+			if err := p.RegisterHandler(pid, elfBPFBytes); err != nil {
+				return fmt.Errorf("error registering handler: %v", err)
+			}
 		}
 	}
 

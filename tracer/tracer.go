@@ -36,8 +36,8 @@ func timestamp(data *[]byte) uint64 {
 	return uint64(event.Timestamp)
 }
 
-func New(callback func(*[]byte)) (*Tracer, error) {
-	p, err := probe.New()
+func New(callback func(*[]byte), cacheSize int) (*Tracer, error) {
+	p, err := probe.New(cacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("error loading probe: %v", err)
 	}
