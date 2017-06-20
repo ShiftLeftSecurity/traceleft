@@ -1,2 +1,1 @@
-syscall close pid %PID% return value 0
-Fd %FD%
+syscall close pid %PID% return value 0 Fd %FD%

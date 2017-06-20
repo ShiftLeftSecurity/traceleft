@@ -1,2 +1,1 @@
-syscall mkdir pid %PID% return value 0
-Pathname "/tmp/test_mkdir" Mode 493
+syscall mkdir pid %PID% return value 0 Pathname "/tmp/traceleft-trace-out/test_mkdir" Mode 493

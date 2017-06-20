@@ -16,18 +16,22 @@ done
 outfile=${outfile:-$(mktemp /tmp/traceleft-test-cli-out-XXXXXX)}
 declare -r outfile
 readonly stampfile="$(mktemp /tmp/traceleft-test-cli-stamp-XXXXXX)"
+outdir="/tmp/traceleft-trace-out"
 
 function shutdown() {
   if [[ "${pid}" -ne -1 ]] && kill -0 "${pid}" >/dev/null 2>&1; then
     kill -9 "${pid}" >/dev/null || true
   fi
   rm -f "${outfile}"
+  rm -rf "${outdir}"
   rm -f "${stampfile}"
 }
 
 trap shutdown EXIT
 
 printf "Using outfile %s\n" "${outfile}"
+printf "Using outdir %s\n" "${outdir}"
+mkdir -p "$outdir"
 
 # Make sure credentials are cached
 sudo -l >/dev/null
@@ -63,7 +67,7 @@ for dir in "${testdir}"/*; do
     kill -9 "${pid}" 2>/dev/null || true
 
     if [[ ("${testname}" == "test_sys_open") || ("${testname}" == "test_sys_close") ]]; then
-        fd=$(cat "/tmp/test_sys_open_close")
+        fd=$(cat "$outdir/test_sys_open_close")
         expected_output="$(sed -e "s|%PID%|$pid|g; s|%FD%|$fd|g" "${testdir}/${testname}/expect.log")"
     else
         expected_output="$(sed -e "s|%PID%|$pid|g" "${testdir}/${testname}/expect.log")"
