@@ -9,8 +9,7 @@ message Event {
         string name = 3;
         string suffix = 4;
     }
-    string check = 2;
-    repeated Args args = 3;
+    repeated Args args = 2;
 }
 
 message Config {
