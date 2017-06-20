@@ -1,0 +1,2 @@
+syscall mkdirat pid %PID% return value 0
+Dfd 42 Pathname "/tmp/test_mkdirat" Mode 493
