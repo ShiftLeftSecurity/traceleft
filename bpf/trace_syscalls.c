@@ -93,6 +93,22 @@ struct bpf_map_def SEC("maps/handle_mkdir_progs_ret") handle_mkdir_progs_ret = {
 	.map_flags = 0,
 };
 
+struct bpf_map_def SEC("maps/handle_mkdirat_progs") handle_mkdirat_progs = {
+	.type = BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 32768,
+	.map_flags = 0,
+};
+
+struct bpf_map_def SEC("maps/handle_mkdirat_progs_ret") handle_mkdirat_progs_ret = {
+	.type = BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 32768,
+	.map_flags = 0,
+};
+
 struct bpf_map_def SEC("maps/handle_fchown_progs") handle_fchown_progs = {
 	.type = BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size = sizeof(__u32),
@@ -297,6 +313,26 @@ int kretprobe__handle_mkdir(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_mkdir_progs_ret, pid >> 32);
+	// TODO insert default handler here
+
+	return 0;
+}
+
+SEC("kprobe/SyS_mkdirat")
+int kprobe__handle_mkdirat(struct pt_regs *ctx)
+{
+	u64 pid = bpf_get_current_pid_tgid();
+	bpf_tail_call(ctx, (void *)&handle_mkdirat_progs, pid >> 32);
+	// TODO insert default handler here
+
+	return 0;
+}
+
+SEC("kretprobe/SyS_mkdirat")
+int kretprobe__handle_mkdirat(struct pt_regs *ctx)
+{
+	u64 pid = bpf_get_current_pid_tgid();
+	bpf_tail_call(ctx, (void *)&handle_mkdirat_progs_ret, pid >> 32);
 	// TODO insert default handler here
 
 	return 0;
