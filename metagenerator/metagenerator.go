@@ -1,9 +1,9 @@
 // Based on Syscall event parsing developed by Iago López Galeiras
 
-package main
+package metagenerator
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,9 +15,16 @@ import (
 	"github.com/ShiftLeftSecurity/traceleft/generator"
 )
 
+const headers = `
+// Generated file, do not edit.
+// Source: metagenerator.go
+
+`
+
 // TODO: make slice sizes fixed so we can decode it with binary.Read(),
 // for now it's fine since we're not using any of these yet.
-const kernelStructs = `package tracer
+const kernelStructs = headers + `
+package tracer
 
 import (
 	"encoding/binary"
@@ -640,7 +647,7 @@ func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
 		}, nil
 }
 
-func gatherSyscalls(syscallsPath string) ([]Syscall, []Syscall, error) {
+func GatherSyscalls(syscallsPath string) ([]Syscall, []Syscall, error) {
 	var goSyscalls []Syscall
 	var cSyscalls []Syscall
 
@@ -705,128 +712,66 @@ func getMatchingEvent(event *generator.Event, syscall []Syscall) (*Syscall, erro
 	return nil, fmt.Errorf("no matching event in config")
 }
 
-func main() {
-	if len(os.Args) != 4 {
-		fmt.Fprintf(os.Stderr, "usage: %s GO_OUT_FILE H_OUT_FILE CONFIG_FILE\n", os.Args[0])
-		os.Exit(1)
-	}
+func GenerateGoStructs(goSyscalls []Syscall) (string, error) {
+	buf := new(bytes.Buffer)
 
-	syscallsPath := `/sys/kernel/debug/tracing/events/syscalls/`
-	goSyscalls, cSyscalls, err := gatherSyscalls(syscallsPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error gathering syscalls: %v\n", err)
-	}
-
-	// Add args to input JSON file
-	file, err := ioutil.ReadFile(os.Args[3])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error reading config: %v\n", err)
-	}
-
-	cfg := &generator.Config{}
-	if err := json.Unmarshal(file, cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "error reading config: %v\n", err)
-	}
-
-	for _, evt := range cfg.Event {
-		sc, err := getMatchingEvent(evt, cSyscalls)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			continue
-		}
-
-		// Convert to Event_Args type for JSON and add args
-		evt.Args = []*generator.Event_Args{}
-		for _, param := range sc.Params {
-			arg := generator.Event_Args{
-				Position: uint32(param.Position),
-				Name:     param.Name,
-				Type:     param.Type,
-				Suffix:   param.Suffix,
-			}
-			evt.Args = append(evt.Args, &arg)
-		}
-	}
-
-	newCfg, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error marshalling JSON config: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := ioutil.WriteFile(os.Args[3], newCfg, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to write updated config: %v\n", err)
-		os.Exit(1)
-	}
-
-	f, err := os.Create(os.Args[1])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating output file: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	cf, err := os.Create(os.Args[2])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating output file: %v\n", err)
-		os.Exit(1)
-	}
-	defer cf.Close()
-
-	if _, err = f.WriteString(kernelStructs); err != nil {
-		fmt.Fprintf(os.Stderr, "error writing to file: %v\n", err)
-		os.Exit(1)
+	if _, err := buf.WriteString(kernelStructs); err != nil {
+		return "", fmt.Errorf("error writing to buffer: %v", err)
 	}
 
 	for _, sc := range goSyscalls {
 		goTmpl, err := template.New("go").Parse(goStructTemplate)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error templating Go: %v\n", err)
-			os.Exit(1)
+			return "", fmt.Errorf("error templating: %v", err)
 		}
-		goTmpl.Execute(f, sc)
-
+		goTmpl.Execute(buf, sc)
 	}
 
-	if _, err = f.WriteString(helpers); err != nil {
-		fmt.Fprintf(os.Stderr, "error writing to file: %v\n", err)
-		os.Exit(1)
+	if _, err := buf.WriteString(helpers); err != nil {
+		return "", fmt.Errorf("error writing to buffer: %v", err)
 	}
 
 	for _, sc := range goSyscalls {
 		goTmpl, err := template.New("go_ev").Parse(eventStringsTemplate)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error templating Go event String functions: %v\n", err)
-			os.Exit(1)
+			return "", fmt.Errorf("error templating event String functions: %v", err)
 		}
-		goTmpl.Execute(f, sc)
+		goTmpl.Execute(buf, sc)
 	}
 
-	if _, err = f.WriteString(getStructPreamble); err != nil {
-		fmt.Fprintf(os.Stderr, "error writing to file: %v\n", err)
-		os.Exit(1)
+	if _, err := buf.WriteString(getStructPreamble); err != nil {
+		return "", fmt.Errorf("error writing to buffer: %v", err)
 	}
 
 	for _, sc := range goSyscalls {
 		goTmpl, err := template.New("go_getStruct").Parse(getStructTemplate)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error templating Go getStruct function: %v\n", err)
-			os.Exit(1)
+			return "", fmt.Errorf("error templating getStruct function: %v", err)
 		}
-		goTmpl.Execute(f, sc)
+		goTmpl.Execute(buf, sc)
 	}
 
-	if _, err = f.WriteString(getStructEpilogue); err != nil {
-		fmt.Fprintf(os.Stderr, "error writing to file: %v\n", err)
-		os.Exit(1)
+	if _, err := buf.WriteString(getStructEpilogue); err != nil {
+		return "", fmt.Errorf("error writing to buffer: %v", err)
+	}
+
+	return buf.String(), nil
+}
+
+func GenerateCStructs(cSyscalls []Syscall) (string, error) {
+	buf := new(bytes.Buffer)
+
+	if _, err := buf.WriteString(headers); err != nil {
+		return "", fmt.Errorf("error writing to buffer: %v", err)
 	}
 
 	for _, sc := range cSyscalls {
 		cTmpl, err := template.New("C").Parse(cStructTemplate)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error templating C: %v\n", err)
-			os.Exit(1)
+			return "", fmt.Errorf("error templating: %v", err)
 		}
-		cTmpl.Execute(cf, sc)
+		cTmpl.Execute(buf, sc)
 	}
+
+	return buf.String(), nil
 }
