@@ -13,8 +13,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	syscallsPath := `/sys/kernel/debug/tracing/events/syscalls/`
-	goSyscalls, cSyscalls, err := metagenerator.GatherSyscalls(syscallsPath)
+	goSyscalls, cSyscalls, err := metagenerator.GatherSyscalls()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error gathering syscalls: %v\n", err)
 		os.Exit(1)

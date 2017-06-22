@@ -15,6 +15,8 @@ import (
 	"github.com/ShiftLeftSecurity/traceleft/generator"
 )
 
+const syscallsPath = `/sys/kernel/debug/tracing/events/syscalls/`
+
 const headers = `
 // Generated file, do not edit.
 // Source: metagenerator.go
@@ -647,7 +649,7 @@ func parseSyscall(name, format string) (*Syscall, *Syscall, error) {
 		}, nil
 }
 
-func GatherSyscalls(syscallsPath string) ([]Syscall, []Syscall, error) {
+func GatherSyscalls() ([]Syscall, []Syscall, error) {
 	var goSyscalls []Syscall
 	var cSyscalls []Syscall
 
