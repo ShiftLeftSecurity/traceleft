@@ -6,9 +6,13 @@ SUDO=$(shell echo "sudo -E")
 
 all: generate
 
+# Calling from the root source directory:
+# make -C metagenerator TRACER_DIR=$PWD/tracer BATTERY_DIR=$PWD/battery
+
 generate:
-	$(SUDO) go run parser.go $(TRACER_DIR)/event_structs $(BATTERY_DIR)/event_structs $(CONFIG_FILE)
-	$(SUDO) chown $(UID) $(TRACER_DIR)/event_structs $(BATTERY_DIR)/event_structs
-	mv $(TRACER_DIR)/event_structs $(TRACER_DIR)/event_structs.go
-	mv $(BATTERY_DIR)/event_structs $(BATTERY_DIR)/event_structs.h
+	test -d "$(TRACER_DIR)" && test -d "$(BATTERY_DIR)"
+	$(SUDO) go run cli/main.go event_structs_go event_structs_c
+	$(SUDO) chown $(UID) event_structs_go event_structs_c
+	mv event_structs_go $(TRACER_DIR)/event_structs.go
+	mv event_structs_c $(BATTERY_DIR)/event_structs.h
 	gofmt -w $(TRACER_DIR)/event_structs.go

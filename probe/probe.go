@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha512"
 	"fmt"
+	"os"
 	"strings"
 	"unsafe"
 
@@ -219,8 +220,13 @@ func New(cacheSize int) (*Probe, error) {
 	if err := bpffs.Mount(); err != nil {
 		return nil, err
 	}
-	// FIXME move this to go-bindata?
-	globalBPF := elflib.NewModule("./bpf/out/trace_syscalls.bpf")
+	// FIXME: just use go-bindata
+	// Meanwhile, make it configurable from environment variable
+	traceSyscallsFile := os.Getenv("TRACELEFT_TRACE_SYSCALLS_FILE")
+	if traceSyscallsFile == "" {
+		traceSyscallsFile = "./bpf/out/trace_syscalls.bpf"
+	}
+	globalBPF := elflib.NewModule(traceSyscallsFile)
 
 	if err := globalBPF.Load(nil); err != nil {
 		return nil, fmt.Errorf("error loading global BPF: %v", err)

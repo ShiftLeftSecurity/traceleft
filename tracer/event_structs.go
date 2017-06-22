@@ -1,3 +1,6 @@
+// Generated file, do not edit.
+// Source: metagenerator.go
+
 package tracer
 
 import (

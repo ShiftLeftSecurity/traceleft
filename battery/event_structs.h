@@ -1,4 +1,8 @@
 
+// Generated file, do not edit.
+// Source: metagenerator.go
+
+
 typedef struct {
 	u64 timestamp;
 	int64_t pid;

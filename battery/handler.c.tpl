@@ -1,3 +1,8 @@
+// Generated file, do not edit.
+// Source: handler.c.tpl
+// Event name: {{ .Name }}
+// Event args: {{ .Args }}
+
 #include <linux/kconfig.h>
 #include <linux/bpf.h>
 #include <linux/types.h>
