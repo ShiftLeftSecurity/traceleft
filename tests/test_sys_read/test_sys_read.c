@@ -2,7 +2,8 @@
 
 #include <stdio.h>
 
-int main(int argc, const char **argv) {
+int main(int argc, const char **argv)
+{
 	int err = stampwait(argv[1]);
 	if (err != 0) {
 		fprintf(stderr, "stampwait failed\n");
@@ -17,7 +18,7 @@ int main(int argc, const char **argv) {
 	char buf[1];
 
 	if (read(fd, buf, 1) < 0) {
-		close (fd);
+		close(fd);
 		return -1;
 	}
 

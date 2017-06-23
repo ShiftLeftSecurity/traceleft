@@ -2,8 +2,10 @@
 
 all: cli $(patsubst %.c, %, $(shell find . -name '*.c'))
 
-cli:
-	go build -o cli cli.go
+cli: .FORCE
+
+.FORCE:
+	go build -a -o cli cli.go
 
 %: %.c
 	gcc -o $@ $^

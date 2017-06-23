@@ -9,19 +9,15 @@ int main(int argc, const char **argv)
 		fprintf(stderr, "stampwait failed\n");
 		return 1;
 	}
-
-	int fd = open("/tmp/traceleft-trace-out/test_sys_write", O_RDWR | O_CREAT, 0755);
-	if (fd < 0)
+	int fd = open("/tmp/traceleft-trace-out/test_sys_open_close", O_RDWR | O_CREAT, 0755);
+	if (fd < 0) {
+		fprintf(stderr, "open failed\n");
 		return 1;
-
-	if (write(fd, "42", 1) != 1) {
-		close (fd);
-		return -1;
 	}
+	char file_desc[2];
+	snprintf(file_desc, 2, "%d", fd);
 
-	char buf[1];
-
-	if (read(fd, buf, 1) < 0) {
+	if (write(fd, file_desc, 1) != 1) {
 		close(fd);
 		return -1;
 	}
