@@ -66,17 +66,17 @@ for dir in "${testdir}"/*; do
 
     kill -9 "${pid}" 2>/dev/null || true
 
-    if [[ ("${testname}" == "test_sys_open") || ("${testname}" == "test_sys_close") ]]; then
-        fd=$(cat "$outdir/test_sys_open_close")
+    if [[ ("${testname}" == "test_sys_open") || ("${testname}" == "test_sys_close") || ("${testname}" == "test_sys_fchmod") ]]; then
+        fd=$(cat "$outdir/test_fd")
         expected_output="$(sed -e "s|%PID%|$pid|g; s|%FD%|$fd|g" "${testdir}/${testname}/expect.log")"
     else
         expected_output="$(sed -e "s|%PID%|$pid|g" "${testdir}/${testname}/expect.log")"
     fi
 
     if diff  --ignore-all-space <(printf "%s" "${expected_output}") "${outfile}"; then
-        echo -e "\r${status_line}\t \t \e[32m[PASSED]\e[39m"
+        printf "\r%-50s  \e[32m%-10s\e[39m \n" "${status_line}" "[PASSED]"
     else
-        echo -e "\r${status_line}\t \t \e[31m[FAILED]\e[39m"
+        printf "\r%-50s  \e[31m%-10s\e[39m \n" "${status_line}" "[FAILED]"
     fi
 
     sudo rm -f "${outfile}"

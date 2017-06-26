@@ -1,6 +1,7 @@
 #include "../stampwait.h"
 
 #include <stdio.h>
+#include <sys/stat.h>
 
 int main(int argc, const char **argv)
 {
@@ -20,6 +21,13 @@ int main(int argc, const char **argv)
 	if (write(fd, file_desc, 1) != 1) {
 		close(fd);
 		return -1;
+	}
+
+	err = fchmod(fd, 0777);
+	if (err != 0) {
+		fprintf(stderr, "fchmod failed\n");
+		close(fd);
+		return 1;
 	}
 
 	close(fd);
