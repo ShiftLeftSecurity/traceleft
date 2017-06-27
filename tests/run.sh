@@ -67,7 +67,11 @@ for dir in "${testdir}"/*; do
 
     kill -9 "${pid}" 2>/dev/null || true
 
-    if [[ ("${testname}" == "test_sys_open") || ("${testname}" == "test_sys_close") || ("${testname}" == "test_sys_fchmod") ]]; then
+    if [[ ("${testname}" == "test_sys_open") ]] || \
+       [[ ("${testname}" == "test_sys_close") ]] || \
+       [[ ("${testname}" == "test_sys_fchmod") ]] || \
+       [[ ("${testname}" == "test_sys_fchown") ]]
+    then
         fd=$(cat "$outdir/test_fd")
         expected_output="$(sed -e "s|%PID%|$pid|g; s|%FD%|$fd|g" "${testdir}/${testname}/expect.log")"
     else

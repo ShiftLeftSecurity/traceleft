@@ -10,19 +10,26 @@ int main(int argc, const char **argv)
 		fprintf(stderr, "stampwait failed\n");
 		return 1;
 	}
-	int fd = open("/tmp/traceleft-trace-out/test_sys_fchmodat", O_RDWR | O_CREAT, 0755);
+	int fd = open("/tmp/traceleft-trace-out/test_fd", O_RDWR | O_CREAT, 0755);
 	if (fd < 0) {
 		fprintf(stderr, "open failed\n");
 		return 1;
 	}
+	char file_desc[2];
+	snprintf(file_desc, 2, "%d", fd);
 
-	close(fd);
+	if (write(fd, file_desc, 1) != 1) {
+		close(fd);
+		return -1;
+	}
 
-	err = fchmodat(42, "/tmp/traceleft-trace-out/test_sys_fchmodat", 0777, 0);
+	err = fchown(fd, 0, 0);
 	if (err != 0) {
-		fprintf(stderr, "fchmodat failed\n");
+		fprintf(stderr, "fchown failed\n");
+		close(fd);
 		return 1;
 	}
 
+	close(fd);
 	return 0;
 }

@@ -1,7 +1,7 @@
 #include "../stampwait.h"
 
 #include <stdio.h>
-#include <sys/stat.h>
+#include <unistd.h>
 
 int main(int argc, const char **argv)
 {
@@ -10,7 +10,7 @@ int main(int argc, const char **argv)
 		fprintf(stderr, "stampwait failed\n");
 		return 1;
 	}
-	int fd = open("/tmp/traceleft-trace-out/test_sys_fchmodat", O_RDWR | O_CREAT, 0755);
+	int fd = open("/tmp/traceleft-trace-out/test_sys_fchownat", O_RDWR | O_CREAT, 0755);
 	if (fd < 0) {
 		fprintf(stderr, "open failed\n");
 		return 1;
@@ -18,9 +18,9 @@ int main(int argc, const char **argv)
 
 	close(fd);
 
-	err = fchmodat(42, "/tmp/traceleft-trace-out/test_sys_fchmodat", 0777, 0);
+	err = fchownat(42, "/tmp/traceleft-trace-out/test_sys_fchownat", 0, 0, 0);
 	if (err != 0) {
-		fprintf(stderr, "fchmodat failed\n");
+		fprintf(stderr, "fchownat failed\n");
 		return 1;
 	}
 

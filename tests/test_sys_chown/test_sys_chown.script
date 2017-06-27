@@ -1,0 +1,2 @@
+trace %PID% %BASEDIR%/battery/out/handle_chown.bpf
+sleep 2
