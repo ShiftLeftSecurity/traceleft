@@ -4,7 +4,7 @@
 
 ### Run example slagent
 
-```
+```bash
 make
 make handlers
 make
@@ -32,6 +32,23 @@ make metagen
 
 This will go through `/sys/kernel/debug/tracing/events/syscalls` and generate
 the structures according to the `format` file present on each syscall.
+
+### Run Tests
+
+```bash
+sudo -E tests/run.sh
+```
+
+#### Expected output
+
+```bash
+Using outfile /tmp/traceleft-test-cli-out-Ecw373
+Using outdir /tmp/traceleft-trace-out
+Running test_sys_chmod with PID: 7996               [PASSED]
+Running test_sys_chown with PID: 8045               [PASSED]
+Running test_sys_close with PID: 8099               [PASSED]
+...
+```
 
 ## Design
 
