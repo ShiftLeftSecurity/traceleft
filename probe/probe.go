@@ -9,8 +9,8 @@ import (
 	"unsafe"
 
 	"github.com/hashicorp/golang-lru"
-	"github.com/iovisor/gobpf/bpffs"
 	elflib "github.com/iovisor/gobpf/elf"
+	"github.com/iovisor/gobpf/pkg/bpffs"
 )
 
 type Probe struct {
