@@ -64,7 +64,7 @@ test: pretest
 	cat $(BUILD_DIR)/report.txt
 
 .PHONY: pregen
-pregen: protogen metagen bpf battery
+pregen: bpf battery
 
 #
 # Metagenerator target
