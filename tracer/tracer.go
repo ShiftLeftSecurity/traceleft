@@ -72,8 +72,8 @@ func New(callback func(*[]byte), cacheSize int) (*Tracer, error) {
 }
 
 func (t *Tracer) Stop() {
-	close(t.stopChan)
 	t.perfMap.PollStop()
+	close(t.stopChan)
 
 	t.Probe.Close()
 }
