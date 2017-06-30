@@ -201,7 +201,12 @@ func (probe *Probe) UnregisterHandler(pid int) error {
 }
 
 func (probe *Probe) Close() error {
-	return probe.module.Close()
+	options := map[string]elflib.CloseOptions{
+		"maps/events": {
+			Unpin: true,
+		},
+	}
+	return probe.module.CloseExt(options)
 }
 
 func (probe *Probe) BPFModule() *elflib.Module {
