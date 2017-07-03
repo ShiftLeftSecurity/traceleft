@@ -24,7 +24,6 @@ BPF_DIR := bpf
 TRACER_DIR := $(realpath tracer)
 BATTERY_DIR := $(realpath battery)
 CONFIG_FILE := $(realpath config.json)
-METAGENERATED_SOURCES := $(BATTERY_DIR)/event_structs.h $(TRACER_DIR)/event_structs.go
 
 PROTO_SOURCES := $(wildcard $(PROTO_DIR)/*.proto)
 PROTO_TARGETS := $(patsubst $(PROTO_DIR)/%.proto,$(PROTO_DIR)/%.pb.go,$(PROTO_SOURCES))
@@ -65,7 +64,7 @@ test: pretest
 	cat $(BUILD_DIR)/report.txt
 
 .PHONY: pregen
-pregen: protogen metagen bpf battery
+pregen: bpf battery
 
 #
 # Metagenerator target
@@ -129,7 +128,6 @@ handlers:
 clean:
 	rm -rf $(BIN_DIR) \
 		$(BUILD_DIR) \
-		$(METAGENERATED_SOURCES) \
 		$(BATTERY_DIR)/handle_*.c \
 		$(BATTERY_DIR)/out \
 		$(BPF_DIR)/out

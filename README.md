@@ -2,6 +2,8 @@
 
 ## Instructions
 
+### Run example slagent
+
 ```
 make
 make handlers
@@ -10,6 +12,26 @@ sudo build/bin/slagent trace $PID1,$PID2:battery/out/handle_read.bpf $PID3:batte
 ```
 
 The `$PID` is optional and can be skipped to load a handler as default handler.
+
+### Update Protocol Buffer golang source files
+
+The source files whith Protocol Buffer definitions are checked in to the
+repository, to update them run
+
+```
+make protogen
+```
+
+### Update metagenerated event structs
+
+Golang and C structs for events are checked in to the repository, to update them run
+
+```
+make metagen
+```
+
+This will go through `/sys/kernel/debug/tracing/events/syscalls` and generate
+the structures according to the `format` file present on each syscall.
 
 ## Design
 
