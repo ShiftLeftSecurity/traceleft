@@ -26,11 +26,11 @@ type Event struct {
 
 var (
 	traceCmd = &cobra.Command{
-		Use:   "trace <pid>:<path elf object> ...",
+		Use:   "trace [<pid>:]<path elf object> ...",
 		Short: "Trace processes",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return fmt.Errorf("must pass at least one comma-separated <pid>:<path elf object> pair")
+				return fmt.Errorf("must pass at least one comma-separated [<pid>:]<path elf object> pair")
 			}
 			return nil
 		},
@@ -122,8 +122,17 @@ func parseEventMap(eventMaps []string) ([]Event, error) {
 	var events []Event
 	for _, eventMap := range eventMaps {
 		evParts := strings.Split(eventMap, ":")
-		if len(evParts) != 2 {
+		if len(evParts) > 2 {
 			return nil, fmt.Errorf("malformed event-map %q", eventMap)
+		}
+		if len(evParts) == 1 {
+			ebpfFile := evParts[0]
+			event := Event{
+				Pids:    []int{0},
+				ELFPath: ebpfFile,
+			}
+			events = append(events, event)
+			continue
 		}
 		pidsStr := evParts[0]
 		pidParts := strings.Split(pidsStr, ",")

@@ -223,7 +223,7 @@ int kprobe__sys_read(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_read_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_read_progs, 0);
 
 	return 0;
 }
@@ -233,7 +233,7 @@ int kretprobe__sys_read(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_read_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_read_progs_ret, 0);
 
 	return 0;
 }
@@ -243,7 +243,7 @@ int kprobe__sys_write(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_write_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_write_progs, 0);
 
 	return 0;
 }
@@ -253,7 +253,7 @@ int kretprobe__handle_write(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_write_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_write_progs_ret, 0);
 
 	return 0;
 }
@@ -263,7 +263,7 @@ int kprobe__handle_open(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_open_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_open_progs, 0);
 
 	return 0;
 }
@@ -273,7 +273,7 @@ int kretprobe__handle_open(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_open_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_open_progs_ret, 0);
 
 	return 0;
 }
@@ -283,7 +283,7 @@ int kprobe__handle_close(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_close_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_close_progs, 0);
 
 	return 0;
 }
@@ -293,7 +293,7 @@ int kretprobe__handle_close(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_close_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_close_progs_ret, 0);
 
 	return 0;
 }
@@ -303,7 +303,7 @@ int kprobe__handle_mkdir(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_mkdir_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_mkdir_progs, 0);
 
 	return 0;
 }
@@ -313,7 +313,7 @@ int kretprobe__handle_mkdir(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_mkdir_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_mkdir_progs_ret, 0);
 
 	return 0;
 }
@@ -323,7 +323,7 @@ int kprobe__handle_mkdirat(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_mkdirat_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_mkdirat_progs, 0);
 
 	return 0;
 }
@@ -333,7 +333,7 @@ int kretprobe__handle_mkdirat(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_mkdirat_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_mkdirat_progs_ret, 0);
 
 	return 0;
 }
@@ -343,7 +343,7 @@ int kprobe__handle_chown(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_chown_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_chown_progs, 0);
 
 	return 0;
 }
@@ -353,7 +353,7 @@ int kretprobe__handle_chwon(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_chown_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_chown_progs_ret, 0);
 
 	return 0;
 }
@@ -363,7 +363,7 @@ int kprobe__handle_fchown(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_fchown_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_fchown_progs, 0);
 
 	return 0;
 }
@@ -373,7 +373,7 @@ int kretprobe__handle_fchwon(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_fchown_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_fchown_progs_ret, 0);
 
 	return 0;
 }
@@ -383,7 +383,7 @@ int kprobe__handle_fchownat(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_fchownat_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_fchownat_progs, 0);
 
 	return 0;
 }
@@ -393,7 +393,7 @@ int kretprobe__handle_fchownat(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_fchownat_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_fchownat_progs_ret, 0);
 
 	return 0;
 }
@@ -403,7 +403,7 @@ int kprobe__handle_chmod(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_chmod_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_chmod_progs, 0);
 
 	return 0;
 }
@@ -413,7 +413,7 @@ int kretprobe__handle_chmod(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_chmod_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_chmod_progs_ret, 0);
 
 	return 0;
 }
@@ -423,7 +423,7 @@ int kprobe__handle_fchmod(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_fchmod_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_fchmod_progs, 0);
 
 	return 0;
 }
@@ -433,7 +433,7 @@ int kretprobe__handle_fchmod(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_fchmod_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_fchmod_progs_ret, 0);
 
 	return 0;
 }
@@ -443,7 +443,7 @@ int kprobe__handle_fchmodat(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_fchmodat_progs, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_fchmodat_progs, 0);
 
 	return 0;
 }
@@ -453,7 +453,7 @@ int kretprobe__handle_fchmodat(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_fchmodat_progs_ret, pid >> 32);
-	// TODO insert default handler here
+	bpf_tail_call(ctx, (void *)&handle_fchmodat_progs_ret, 0);
 
 	return 0;
 }
