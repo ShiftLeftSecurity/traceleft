@@ -16,10 +16,10 @@ type Aggregator struct {
 
 	stop chan bool
 
-	conn *grpc.ClientConn
+	conn   *grpc.ClientConn
+	client tracer.MetricCollectorClient
 
-	collector  tracer.MetricCollectorClient
-	collection *tracer.MetricCollection
+	collection []*tracer.Metric
 
 	eventHashes map[string]*tracer.Metric
 
@@ -31,11 +31,11 @@ func NewAggregator(incoming <-chan *tracer.EventData, intervalMilliseconds time.
 	if err != nil {
 		return nil, err
 	}
+
 	aggregator := &Aggregator{
 		conn:                 conn,
+		client:               tracer.NewMetricCollectorClient(conn),
 		stop:                 make(chan bool),
-		collector:            tracer.NewMetricCollectorClient(conn),
-		collection:           &tracer.MetricCollection{},
 		eventHashes:          make(map[string]*tracer.Metric),
 		intervalMilliseconds: intervalMilliseconds,
 	}
@@ -57,6 +57,12 @@ func NewAggregator(incoming <-chan *tracer.EventData, intervalMilliseconds time.
 					return
 				}
 				aggregator.add(event)
+				if len(aggregator.eventHashes) > 1000 {
+					err := aggregator.send()
+					if err != nil {
+						log.Printf("failed to send event collection: %s\n", err)
+					}
+				}
 			}
 		}
 	}()
@@ -94,21 +100,34 @@ func (a *Aggregator) add(event *tracer.EventData) {
 
 	a.eventHashes[hash] = metric
 
-	a.collection.Metrics = append(a.collection.Metrics, metric)
+	a.collection = append(a.collection, metric)
 }
 
 func (a *Aggregator) send() error {
 	a.Lock()
 	defer a.Unlock()
 
-	log.Printf("sending %d events\n", len(a.collection.Metrics))
+	log.Printf("sending %d events ...\n", len(a.collection))
 
-	_, err := a.collector.Process(context.Background(), a.collection)
+	stream, err := a.client.Process(context.Background())
 	if err != nil {
 		return err
 	}
 
-	a.collection.Metrics = nil
+	for _, metric := range a.collection {
+		if err := stream.Send(metric); err != nil {
+			return err
+		}
+	}
+
+	log.Printf("sending %d events ... finished\n", len(a.collection))
+
+	_, err = stream.CloseAndRecv()
+	if err != nil {
+		return err
+	}
+
+	a.collection = nil
 	a.eventHashes = make(map[string]*tracer.Metric)
 	return nil
 }

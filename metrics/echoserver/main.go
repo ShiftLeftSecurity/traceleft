@@ -3,12 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
-	"golang.org/x/net/context"
+	// "golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/ShiftLeftSecurity/traceleft/tracer"
@@ -18,7 +20,10 @@ var addr = flag.String("addr", ":50051", "grpc server addr [host]:port")
 
 type server struct{}
 
-var syscallCount map[string]uint64
+var (
+	syscallCount      map[string]uint64
+	syscallCountMutex sync.Mutex
+)
 
 func init() {
 	syscallCount = make(map[string]uint64)
@@ -31,12 +36,20 @@ func min(x, y uint64) uint64 {
 	return y
 }
 
-func (s *server) Process(ctx context.Context, in *tracer.MetricCollection) (*tracer.Empty, error) {
-	for _, metric := range in.Metrics {
+func (s *server) Process(stream tracer.MetricCollector_ProcessServer) error {
+	syscallCountMutex.Lock()
+	defer syscallCountMutex.Unlock()
+	for {
+		metric, err := stream.Recv()
+		if err == io.EOF {
+			return stream.SendAndClose(&tracer.Empty{})
+		}
+		if err != nil {
+			return err
+		}
 		syscallCount[string(metric.CommonEvent.Name)] += metric.Count
-		// fmt.Printf("syscall: %s count: %d\n", metric.CommonEvent.Syscall, metric.Count)
 	}
-	return &tracer.Empty{}, nil
+	return nil
 }
 
 func main() {
@@ -58,10 +71,12 @@ func main() {
 			fmt.Print("\033[H\033[2J")
 			fmt.Println()
 			fmt.Printf("  %-20s : %-10s\n", "syscall", "count")
+			syscallCountMutex.Lock()
 			for syscall, count := range syscallCount {
 				fmt.Printf("  %-20s : %-10d %s\n", syscall, count, strings.Repeat("|", int(min(count, 50))))
 			}
 			syscallCount = make(map[string]uint64)
+			syscallCountMutex.Unlock()
 		}
 	}()
 	if err := s.Serve(lis); err != nil {

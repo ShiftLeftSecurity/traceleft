@@ -738,14 +738,10 @@ message {{ .Name }} {
 
 const protoMetricCollector = `
 service MetricCollector {
-	rpc Process (MetricCollection) returns (Empty) {}
+	rpc Process (stream Metric) returns (Empty) {}
 }
 
 message Empty {}
-
-message MetricCollection {
-	repeated Metric metrics = 1;
-}
 `
 
 const protoMetricTemplate = `
