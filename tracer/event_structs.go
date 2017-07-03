@@ -163,8 +163,8 @@ type ChmodEvent struct {
 
 type ChownEvent struct {
 	Filename [256]byte
-	User     int64
-	Group    int64
+	User     uint32
+	Group    uint32
 }
 
 type CloseEvent struct {
@@ -184,15 +184,15 @@ type FchmodatEvent struct {
 
 type FchownEvent struct {
 	Fd    uint64
-	User  int64
-	Group int64
+	User  uint32
+	Group uint32
 }
 
 type FchownatEvent struct {
 	Dfd      int64
 	Filename [256]byte
-	User     int64
-	Group    int64
+	User     uint32
+	Group    uint32
 	Flag     int64
 }
 

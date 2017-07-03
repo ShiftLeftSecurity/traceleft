@@ -1,0 +1,1 @@
+syscall chmod pid %PID% return value 0 Filename "/tmp/traceleft-trace-out/test_sys_chmod" Mode 511

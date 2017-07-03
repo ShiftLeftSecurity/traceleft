@@ -1,0 +1,2 @@
+trace %PID% %BASEDIR%/battery/out/handle_chmod.bpf
+sleep 2

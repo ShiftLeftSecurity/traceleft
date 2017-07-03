@@ -208,8 +208,8 @@ var (
 		"const void * *":              "unsafe.Pointer",
 		"const void *":                "unsafe.Pointer",
 		"fd_set *":                    "syscall.FdSet",
-		"gid_t *":                     "int64",
-		"gid_t":                       "int64",
+		"gid_t *":                     "uint64",
+		"gid_t":                       "uint32",
 		"int *":                       "int64",
 		"int":                         "int64",
 		"key_serial_t":                "int32",
@@ -277,8 +277,8 @@ var (
 		"u32":                         "uint32",
 		"u64":                         "uint64",
 		"__u64":                       "uint64",
-		"uid_t *":                     "int64",
-		"uid_t":                       "int64",
+		"uid_t *":                     "uint64",
+		"uid_t":                       "uint32",
 		"umode_t":                     "uint64",
 		"union bpf_attr *":            "BpfAttr",
 		"unsigned char *":             fmt.Sprintf("[%d]byte", maxBufferSize),
@@ -470,7 +470,7 @@ func (e {{ .Name }}) String(ret int64) string {
 
 	return fmt.Sprintf("{{- range $index, $param := .Params -}}
 	{{ $param.Name }}
-	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") }} %d {{else}} %q {{ end -}}
+	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") (eq $param.Type "uint32") }} %d {{else}} %q {{ end -}}
 	{{- end }}",
 	{{- range $index, $param := .Params -}}
 		{{ if $index }},{{ end }}

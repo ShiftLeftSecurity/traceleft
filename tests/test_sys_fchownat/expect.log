@@ -1,0 +1,1 @@
+syscall fchownat pid %PID% return value 0 Dfd 42 Filename "/tmp/traceleft-trace-out/test_sys_fchownat" User 0 Group 0 Flag 0

@@ -9,7 +9,7 @@ int main(int argc, const char **argv)
 		fprintf(stderr, "stampwait failed\n");
 		return 1;
 	}
-	int fd = open("/tmp/traceleft-trace-out/test_sys_open_close", O_RDWR | O_CREAT, 0755);
+	int fd = open("/tmp/traceleft-trace-out/test_fd", O_RDWR | O_CREAT, 0755);
 	if (fd < 0) {
 		fprintf(stderr, "open failed\n");
 		return 1;

@@ -1,0 +1,2 @@
+trace %PID% %BASEDIR%/battery/out/handle_fchmod.bpf
+sleep 2

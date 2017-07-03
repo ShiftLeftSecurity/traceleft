@@ -1,0 +1,1 @@
+syscall fchmodat pid %PID% return value 0 Dfd 42 Filename "/tmp/traceleft-trace-out/test_sys_fchmodat" Mode 511
