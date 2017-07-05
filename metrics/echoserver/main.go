@@ -16,7 +16,7 @@ import (
 	"github.com/ShiftLeftSecurity/traceleft/tracer"
 )
 
-var addr = flag.String("addr", ":50051", "grpc server addr [host]:port")
+var addr = flag.String("addr", "127.0.0.1:50051", "grpc server addr [host]:port")
 
 type server struct{}
 
