@@ -1,10 +1,8 @@
 package tracer
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
-	"os"
 
 	elflib "github.com/iovisor/gobpf/elf"
 
@@ -26,14 +24,7 @@ type Tracer struct {
 }
 
 func timestamp(data *[]byte) uint64 {
-	var event CommonEvent
-	err := binary.Read(bytes.NewBuffer(*data), binary.LittleEndian, &event)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "timestamp() failed to decode received data: %v\n", err)
-		return 0
-	}
-
-	return uint64(event.Timestamp)
+	return binary.LittleEndian.Uint64(*data)
 }
 
 func New(callback func(*[]byte), cacheSize int) (*Tracer, error) {
