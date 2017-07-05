@@ -10,13 +10,18 @@ import (
 	"sync"
 	"time"
 
-	// "golang.org/x/net/context"
+	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc"
 
 	"github.com/ShiftLeftSecurity/traceleft/tracer"
 )
 
-var addr = flag.String("addr", "127.0.0.1:50051", "grpc server addr [host]:port")
+var (
+	addr        = flag.String("addr", "127.0.0.1:50051", "grpc server addr [ip]:port (ignored with -tls enabled)")
+	tlsDomain   = flag.String("tls-domain", "", "domain to use for certificate")
+	tlsCacheDir = flag.String("tls-cache-dir", "./.acme", "directory to cache obtained certificates")
+	tlsEnable   = flag.Bool("tls", false, "obtain and use lets encrypt certificate (requires -domain option)")
+)
 
 type server struct{}
 
@@ -27,13 +32,6 @@ var (
 
 func init() {
 	syscallCount = make(map[string]uint64)
-}
-
-func min(x, y uint64) uint64 {
-	if x < y {
-		return x
-	}
-	return y
 }
 
 func (s *server) Process(stream tracer.MetricCollector_ProcessServer) error {
@@ -52,35 +50,68 @@ func (s *server) Process(stream tracer.MetricCollector_ProcessServer) error {
 	return nil
 }
 
+func printSyscallCount() {
+	for {
+		time.Sleep(5 * time.Second)
+		fmt.Print("\033[H\033[2J")
+		fmt.Println()
+		if len(syscallCount) == 0 {
+			fmt.Println("  no events received")
+			continue
+		}
+		fmt.Printf("  %-20s : %-10s\n", "syscall", "count")
+		syscallCountMutex.Lock()
+		for syscall, count := range syscallCount {
+			fmt.Printf("  %-20s : %-10d %s\n", syscall, count, strings.Repeat("|", int(min(count, 50))))
+		}
+		syscallCount = make(map[string]uint64)
+		syscallCountMutex.Unlock()
+	}
+}
+
 func main() {
 	flag.Parse()
 
-	lis, err := net.Listen("tcp", *addr)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to listen: %v\n", err)
-		os.Exit(1)
-	}
-	s := grpc.NewServer()
-	tracer.RegisterMetricCollectorServer(s, &server{})
-	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			if len(syscallCount) == 0 {
-				continue
-			}
-			fmt.Print("\033[H\033[2J")
-			fmt.Println()
-			fmt.Printf("  %-20s : %-10s\n", "syscall", "count")
-			syscallCountMutex.Lock()
-			for syscall, count := range syscallCount {
-				fmt.Printf("  %-20s : %-10d %s\n", syscall, count, strings.Repeat("|", int(min(count, 50))))
-			}
-			syscallCount = make(map[string]uint64)
-			syscallCountMutex.Unlock()
+	grpcServer := grpc.NewServer()
+
+	tracer.RegisterMetricCollectorServer(grpcServer, &server{})
+
+	go printSyscallCount()
+
+	var (
+		err      error
+		listener net.Listener
+	)
+	if *tlsEnable {
+		if *tlsDomain == "" {
+			fmt.Fprintf(os.Stderr, "-domain is required with tls enabled\n")
+			os.Exit(1)
 		}
-	}()
-	if err := s.Serve(lis); err != nil {
+
+		manager := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(*tlsDomain),
+			Cache:      autocert.DirCache(*tlsCacheDir),
+		}
+
+		listener = manager.Listener()
+	} else {
+		listener, err = net.Listen("tcp", *addr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get listener: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	if err := grpcServer.Serve(listener); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to serve: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func min(x, y uint64) uint64 {
+	if x < y {
+		return x
+	}
+	return y
 }

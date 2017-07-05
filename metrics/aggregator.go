@@ -3,10 +3,12 @@ package metrics
 import (
 	"context"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/ShiftLeftSecurity/traceleft/tracer"
 )
@@ -26,8 +28,21 @@ type Aggregator struct {
 	intervalMilliseconds time.Duration
 }
 
-func NewAggregator(incoming <-chan *tracer.EventData, intervalMilliseconds time.Duration) (*Aggregator, error) {
-	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+type AggregatorOptions struct {
+	CollectorAddr string
+	DialInsecure  bool
+}
+
+func NewAggregator(opts AggregatorOptions, incoming <-chan *tracer.EventData, intervalMilliseconds time.Duration) (*Aggregator, error) {
+	var dialOptions []grpc.DialOption
+	if opts.DialInsecure {
+		dialOptions = append(dialOptions, grpc.WithInsecure())
+	} else {
+		serverName := strings.Split(opts.CollectorAddr, ":")[0]
+		creds := credentials.NewClientTLSFromCert(nil, serverName)
+		dialOptions = append(dialOptions, grpc.WithTransportCredentials(creds))
+	}
+	conn, err := grpc.Dial(opts.CollectorAddr, dialOptions...)
 	if err != nil {
 		return nil, err
 	}

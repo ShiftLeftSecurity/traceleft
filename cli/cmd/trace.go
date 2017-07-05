@@ -38,11 +38,15 @@ var (
 		Run: cmdTrace,
 	}
 
-	handlerCacheSize int
+	handlerCacheSize      int
+	collectorAddr         string
+	collectorWithInsecure bool
 )
 
 func init() {
 	traceCmd.Flags().IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
+	traceCmd.Flags().StringVar(&collectorAddr, "collector-addr", "localhost:50051", "addr of the collector service ('host:port' pair w/o protocol)")
+	traceCmd.Flags().BoolVar(&collectorWithInsecure, "collector-insecure", false, "disable transport security for collector connection")
 }
 
 var eventChan chan *tracer.EventData
@@ -53,7 +57,10 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 
 	eventChan = make(chan *tracer.EventData)
 
-	aggregator, err := metrics.NewAggregator(eventChan, 5000)
+	aggregator, err := metrics.NewAggregator(metrics.AggregatorOptions{
+		collectorAddr,
+		collectorWithInsecure,
+	}, eventChan, 5000)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get aggregator: %v\n", err)
 		os.Exit(1)
