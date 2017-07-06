@@ -45,7 +45,7 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 
 	{{ .Name }}_event_t evt = {
 		.timestamp = bpf_ktime_get_ns(),
-		.syscall = "{{ .Name }}",
+		.name = "{{ .Name }}",
 		.pid = pid >> 32,
 		.ret = PT_REGS_RC(ctx),
 	};

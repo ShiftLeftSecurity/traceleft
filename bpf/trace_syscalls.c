@@ -10,7 +10,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 } event_t;
 
 struct bpf_map_def SEC("maps/handle_open_progs") handle_open_progs = {

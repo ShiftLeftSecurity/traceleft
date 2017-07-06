@@ -142,10 +142,10 @@ func handleEvent(data *[]byte) {
 		fmt.Fprintf(os.Stderr, "failed to decode common event data: %v\n", err)
 		return
 	}
-	msg := fmt.Sprintf("syscall %s pid %d return value %d ", commonEvent.Syscall, commonEvent.Pid, commonEvent.Ret)
-	event, err := tracer.GetStruct(commonEvent.Syscall, buf)
+	msg := fmt.Sprintf("event %s pid %d return value %d ", commonEvent.Name, commonEvent.Pid, commonEvent.Ret)
+	event, err := tracer.GetStruct(commonEvent.Name, buf)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get %q struct: %v\n", commonEvent.Syscall, err)
+		fmt.Fprintf(os.Stderr, "Failed to get %q struct: %v\n", commonEvent.Name, err)
 		return
 	}
 	if outfile != "" {
