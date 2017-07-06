@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
@@ -64,6 +66,13 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(os.Stderr, "Failed to register events to trace: %v\n", err)
 		os.Exit(1)
 	}
+
+	go func() {
+		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+			fmt.Fprintf(os.Stderr, "http server failed: %v\n", err)
+			os.Exit(1)
+		}
+	}()
 
 	<-sig
 	tracer.Stop()
