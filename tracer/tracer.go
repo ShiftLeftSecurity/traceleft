@@ -1,20 +1,37 @@
 package tracer
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
+	"unsafe"
 
 	elflib "github.com/iovisor/gobpf/elf"
 
 	"github.com/ShiftLeftSecurity/traceleft/probe"
 )
+import "C"
 
 // this has to match the struct in trace_syscalls.c and handlers.
 type CommonEvent struct {
 	Timestamp uint64
 	Pid       int64
 	Ret       int64
-	Syscall   [64]byte
+	Syscall   string
+}
+
+func CommonEventFromBuffer(buf *bytes.Buffer) (*CommonEvent, error) {
+	if buf.Len() < 88 { // sizeof(event_t) = 88. See bpf/trace_syscalls.c.
+		return nil, fmt.Errorf("expected buf.Len() >= 88, but go %d", buf.Len())
+	}
+	e := &CommonEvent{}
+	e.Timestamp = binary.LittleEndian.Uint64(buf.Next(8))
+	e.Pid = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+	e.Ret = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+	syscallBytes := buf.Next(64)
+	syscallCstr := (*C.char)(unsafe.Pointer(&syscallBytes[0]))
+	e.Syscall = C.GoString(syscallCstr)
+	return e, nil
 }
 
 type Tracer struct {

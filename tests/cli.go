@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/binary"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -12,7 +11,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/peterh/liner"
 
@@ -138,25 +136,22 @@ func writeToOutfile(msg string) {
 }
 
 func handleEvent(data *[]byte) {
-	var cev tracer.CommonEvent
 	buf := bytes.NewBuffer(*data)
-	err := binary.Read(buf, binary.LittleEndian, &cev)
+	commonEvent, err := tracer.CommonEventFromBuffer(buf)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to decode received data: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to decode common event data: %v\n", err)
 		return
 	}
-	syscallCstr := (*C.char)(unsafe.Pointer(&cev.Syscall))
-	syscallName := C.GoString(syscallCstr)
-	msg := fmt.Sprintf("syscall %s pid %d return value %d ", syscallName, cev.Pid, cev.Ret)
-	event, err := tracer.GetStruct(syscallName, buf)
+	msg := fmt.Sprintf("syscall %s pid %d return value %d ", commonEvent.Syscall, commonEvent.Pid, commonEvent.Ret)
+	event, err := tracer.GetStruct(commonEvent.Syscall, buf)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get %q struct: %v\n", syscallName, err)
+		fmt.Fprintf(os.Stderr, "Failed to get %q struct: %v\n", commonEvent.Syscall, err)
 		return
 	}
 	if outfile != "" {
-		go writeToOutfile(msg + event.String(cev.Ret))
+		go writeToOutfile(msg + event.String(commonEvent.Ret))
 	} else {
-		fmt.Println(msg + event.String(cev.Ret))
+		fmt.Println(msg + event.String(commonEvent.Ret))
 	}
 }
 
