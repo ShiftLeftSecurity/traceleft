@@ -13,6 +13,19 @@ typedef struct {
 	char name[64];
 } event_t;
 
+/* This is a key/value store with the keys being the cpu number
+ * and the values being a perf file descriptor.
+ */
+struct bpf_map_def SEC("maps/events") event = {
+	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(__u32),
+	.max_entries = 1024,
+	.map_flags = 0,
+	.pinning = PIN_GLOBAL_NS,
+	.namespace = "traceleft",
+};
+
 struct bpf_map_def SEC("maps/handle_tcp_v4_connect_progs") handle_tcp_v4_connect_progs = {
 	.type = BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size = sizeof(__u32),
