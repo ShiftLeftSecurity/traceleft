@@ -227,11 +227,11 @@ func New(cacheSize int) (*Probe, error) {
 	}
 	// FIXME: just use go-bindata
 	// Meanwhile, make it configurable from environment variable
-	traceSyscallsFile := os.Getenv("TRACELEFT_TRACE_SYSCALLS_FILE")
-	if traceSyscallsFile == "" {
-		traceSyscallsFile = "./bpf/out/trace_syscalls.bpf"
+	traceEventsFile := os.Getenv("TRACELEFT_TRACE_EVENTS_FILE")
+	if traceEventsFile == "" {
+		traceEventsFile = "./bpf/out/trace_events.bpf"
 	}
-	globalBPF := elflib.NewModule(traceSyscallsFile)
+	globalBPF := elflib.NewModule(traceEventsFile)
 
 	if err := globalBPF.Load(nil); err != nil {
 		return nil, fmt.Errorf("error loading global BPF: %v", err)

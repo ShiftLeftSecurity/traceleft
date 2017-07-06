@@ -1,4 +1,5 @@
 // Based on Syscall event parsing developed by Iago López Galeiras
+// The metagenerator now also supports generation of network events
 
 package metagenerator
 
@@ -11,8 +12,6 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
-
-	"github.com/ShiftLeftSecurity/traceleft/generator"
 )
 
 const syscallsPath = `/sys/kernel/debug/tracing/events/syscalls/`
@@ -398,6 +397,29 @@ var (
 	}
 )
 
+const networkTemplate = `
+// network events struct
+
+type TcpV4ConnectEvent struct {
+	Skp 		uint64
+	Saddr 		uint32
+	Daddr		uint32
+	Dport		uint16
+}
+
+// network events string functions
+
+func (e TcpV4ConnectEvent) String(ret int64) string {
+	return fmt.Sprintf("Saddr %s Daddr %s Dport %d ", inet_ntoa(e.Saddr), inet_ntoa(e.Daddr), e.Dport)
+}
+
+// network helper functions
+
+func inet_ntoa(ip uint32) string {
+	return fmt.Sprintf("%d.%d.%d.%d", byte(ip >> 24), byte(ip >> 16), byte(ip >> 8), byte(ip))
+}
+`
+
 const goStructTemplate = `
 type {{ .Name }} struct {
 	{{- range $index, $param := .Params }}
@@ -411,7 +433,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	{{- range $index, $param := .Params}}
 	{{ $param.Type }} {{ $param.Name }}{{ $param.Suffix }};
 	{{- end }}
@@ -484,8 +506,8 @@ func (e {{ .Name }}) String(ret int64) string {
 `
 
 const getStructPreamble = `
-func GetStruct(syscall string, buf *bytes.Buffer) (Printable, error) {
-	switch syscall {
+func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
+	switch eventName {
 `
 
 const getStructTemplate = `
@@ -498,6 +520,14 @@ const getStructTemplate = `
 `
 
 const getStructEpilogue = `
+	// network events
+	case "tcp_v4_connect":
+		ev := TcpV4ConnectEvent{}
+		if err := binary.Read(buf, binary.BigEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
 	default:
 		return DefaultEvent{}, nil
 	}
@@ -705,15 +735,6 @@ func GatherSyscalls() ([]Syscall, []Syscall, error) {
 	return goSyscalls, cSyscalls, nil
 }
 
-func getMatchingEvent(event *generator.Event, syscall []Syscall) (*Syscall, error) {
-	for _, sc := range syscall {
-		if event.Name == sc.Name {
-			return &sc, nil
-		}
-	}
-	return nil, fmt.Errorf("no matching event in config")
-}
-
 func GenerateGoStructs(goSyscalls []Syscall) (string, error) {
 	buf := new(bytes.Buffer)
 
@@ -754,6 +775,10 @@ func GenerateGoStructs(goSyscalls []Syscall) (string, error) {
 	}
 
 	if _, err := buf.WriteString(getStructEpilogue); err != nil {
+		return "", fmt.Errorf("error writing to buffer: %v", err)
+	}
+
+	if _, err := buf.WriteString(networkTemplate); err != nil {
 		return "", fmt.Errorf("error writing to buffer: %v", err)
 	}
 

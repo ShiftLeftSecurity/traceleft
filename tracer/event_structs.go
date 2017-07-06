@@ -354,8 +354,8 @@ func (e WriteEvent) String(ret int64) string {
 	return fmt.Sprintf("Fd %d Buf %q Count %d ", e.Fd, bufferGo, e.Count)
 }
 
-func GetStruct(syscall string, buf *bytes.Buffer) (Printable, error) {
-	switch syscall {
+func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
+	switch eventName {
 
 	case "chmod":
 		ev := ChmodEvent{}
@@ -441,7 +441,36 @@ func GetStruct(syscall string, buf *bytes.Buffer) (Printable, error) {
 		}
 		return ev, nil
 
+	// network events
+	case "tcp_v4_connect":
+		ev := TcpV4ConnectEvent{}
+		if err := binary.Read(buf, binary.BigEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
+
 	default:
 		return DefaultEvent{}, nil
 	}
+}
+
+// network events struct
+
+type TcpV4ConnectEvent struct {
+	Skp   uint64
+	Saddr uint32
+	Daddr uint32
+	Dport uint16
+}
+
+// network events string functions
+
+func (e TcpV4ConnectEvent) String(ret int64) string {
+	return fmt.Sprintf("Saddr %s Daddr %s Dport %d ", inet_ntoa(e.Saddr), inet_ntoa(e.Daddr), e.Dport)
+}
+
+// network helper functions
+
+func inet_ntoa(ip uint32) string {
+	return fmt.Sprintf("%d.%d.%d.%d", byte(ip>>24), byte(ip>>16), byte(ip>>8), byte(ip))
 }
