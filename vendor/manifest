@@ -63,6 +63,14 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/gizak/termui",
+			"repository": "https://github.com/gizak/termui",
+			"vcs": "git",
+			"revision": "72304ddb9b4e9838426a021aad64a5a860e98324",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/golang/glog",
 			"repository": "https://github.com/golang/glog",
 			"vcs": "git",
@@ -219,6 +227,23 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/maruel/panicparse/stack",
+			"repository": "https://github.com/maruel/panicparse",
+			"vcs": "git",
+			"revision": "ae43f192cef2add653fe1481a3070ed00a4a6981",
+			"branch": "master",
+			"path": "/stack",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/mattn/go-runewidth",
+			"repository": "https://github.com/mattn/go-runewidth",
+			"vcs": "git",
+			"revision": "97311d9f7767e3d6f422ea06661bc2c7a19e8a5d",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/mitchellh/go-homedir",
 			"repository": "https://github.com/mitchellh/go-homedir",
 			"vcs": "git",
@@ -227,10 +252,26 @@
 			"notests": true
 		},
 		{
+			"importpath": "github.com/mitchellh/go-wordwrap",
+			"repository": "https://github.com/mitchellh/go-wordwrap",
+			"vcs": "git",
+			"revision": "ad45545899c7b13c020ea92b2072220eefad42b8",
+			"branch": "master",
+			"notests": true
+		},
+		{
 			"importpath": "github.com/mitchellh/mapstructure",
 			"repository": "https://github.com/mitchellh/mapstructure",
 			"vcs": "git",
 			"revision": "d0303fe809921458f417bcf828397a65db30a7e4",
+			"branch": "master",
+			"notests": true
+		},
+		{
+			"importpath": "github.com/nsf/termbox-go",
+			"repository": "https://github.com/nsf/termbox-go",
+			"vcs": "git",
+			"revision": "72800b73ab9a3c78df350738298b0361354772ff",
 			"branch": "master",
 			"notests": true
 		},
@@ -465,6 +506,15 @@
 			"revision": "dfe83d419c9403b40b19d08cdba2afec27b002f7",
 			"branch": "master",
 			"path": "/trace",
+			"notests": true
+		},
+		{
+			"importpath": "golang.org/x/net/websocket",
+			"repository": "https://go.googlesource.com/net",
+			"vcs": "git",
+			"revision": "054b33e6527139ad5b1ec2f6232c3b175bd9a30c",
+			"branch": "master",
+			"path": "/websocket",
 			"notests": true
 		},
 		{
