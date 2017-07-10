@@ -150,8 +150,8 @@ int kprobe__handle_tcp_set_state(struct pt_regs *ctx)
 			.name = "connect_v4",
 			.saddr = tup.saddr,
 			.daddr = tup.daddr,
-			.sport = ntohs(tup.sport),
-			.dport = ntohs(tup.dport),
+			.sport = tup.sport,
+			.dport = tup.dport,
 			.netns = tup.netns,
 		};
 
