@@ -51,6 +51,10 @@ for dir in "${testdir}"/*; do
         continue
     fi
 
+    if [[ -n $@ ]] && [[ ! " $@ " =~ " ${testname} " ]]; then
+        continue
+    fi
+
     "${testdir}/${testname}/${testname}" "${stampfile}" &
     pid=$!
     disown
