@@ -400,17 +400,19 @@ var (
 const networkTemplate = `
 // network events struct
 
-type TcpV4ConnectEvent struct {
-	Skp 		uint64
+type ConnectV4Event struct {
 	Saddr 		uint32
 	Daddr		uint32
+	Sport		uint16
 	Dport		uint16
+	Netns		uint32
 }
 
 // network events string functions
 
-func (e TcpV4ConnectEvent) String(ret int64) string {
-	return fmt.Sprintf("Saddr %s Daddr %s Dport %d ", inet_ntoa(e.Saddr), inet_ntoa(e.Daddr), e.Dport)
+func (e ConnectV4Event) String(ret int64) string {
+	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa(e.Saddr),
+		inet_ntoa(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
 
 // network helper functions
@@ -521,8 +523,8 @@ const getStructTemplate = `
 
 const getStructEpilogue = `
 	// network events
-	case "tcp_v4_connect":
-		ev := TcpV4ConnectEvent{}
+	case "connect_v4":
+		ev := ConnectV4Event{}
 		if err := binary.Read(buf, binary.BigEndian, &ev); err != nil {
 			return nil, err
 		}

@@ -1,4 +1,4 @@
-/* handle_network_tcp.c
+/* handle_network_*.c
 
  This file build the BPF battery to trace established TCP network connections
 
@@ -35,41 +35,7 @@
 #pragma clang diagnostic pop
 #include <net/inet_sock.h>
 #include <net/net_namespace.h>
-
-#define PIN_GLOBAL_NS 2
-
-typedef struct {
-	u64 timestamp;
-	int64_t pid;
-	long ret;
-	char name[64];
-	u32 saddr;
-	u32 daddr;
-	u16 sport;
-	u16 dport;
-	u32 netns;
-} tcp_v4_event_t;
-
-typedef struct {
-	u32 saddr;
-	u32 daddr;
-	u16 sport;
-	u16 dport;
-	u32 netns;
-} tuple_v4_t;
-
-// This is the event map where the outgoing perf event is stored. It will be updated
-// from the tcp_set_state call which is when we know that connection is established
-struct bpf_map_def SEC("maps/events") tcp_v4_event =
-{
-	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(__u32),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
-};
+#include "handle_network_tcp.h"
 
 // This stores the sock * to match kprobe and kretprobe for tcp_v4_connect call
 struct bpf_map_def SEC("maps/tcp_v4_connectsock") tcp_v4_connectsock =
@@ -127,15 +93,6 @@ static int read_tuple_v4(tuple_v4_t *tup, struct sock *skp)
 	return 1;
 }
 
-// Helper to check if family is AF_INET ot AF_INET6
-__attribute__((always_inline))
-static bool check_family(struct sock *sk, u16 expected_family) {
-	u16 family = 0;
-	bpf_probe_read(&family, sizeof(family), &sk->__sk_common.skc_family);
-
-	return family == expected_family;
-}
-
 SEC("kretprobe/handle_tcp_v4_connect")
 int kretprobe__handle_tcp_v4_connect(struct pt_regs *ctx)
 {
@@ -173,62 +130,6 @@ int kprobe__handle_tcp_v4_connect(struct pt_regs *ctx)
 	struct sock *skp;
 	skp = (struct sock *) PT_REGS_PARM1(ctx);
 	bpf_map_update_elem(&tcp_v4_connectsock, &pid, &skp, BPF_ANY);
-	return 0;
-}
-
-SEC("kretprobe/handle_tcp_set_state")
-int kretprobe__handle_tcp_set_state(struct pt_regs *ctx)
-{
-	// Dummy probe, needed by design
-	return 0;
-};
-
-SEC("kprobe/handle_tcp_set_state")
-int kprobe__handle_tcp_set_state(struct pt_regs *ctx)
-{
-	u32 cpu = bpf_get_smp_processor_id();
-	struct sock *skp;
-	int state;
-
-	skp =  (struct sock *) PT_REGS_PARM1(ctx);
-	state = (int) PT_REGS_PARM2(ctx);
-	if (state != TCP_ESTABLISHED && state != TCP_CLOSE) {
-		return 0;
-	}
-
-	if (check_family(skp, AF_INET)) {
-		tuple_v4_t tup = { };
-		if (!read_tuple_v4(&tup, skp)) {
-			return 0;
-		}
-
-		if (state == TCP_CLOSE) {
-			bpf_map_delete_elem(&tuple_pid_v4, &tup);
-			return 0;
-		}
-
-		u64 *pid;
-		pid = bpf_map_lookup_elem(&tuple_pid_v4, &tup);
-		if (pid == 0) {
-			return 0;	// missed entry
-		}
-
-		tcp_v4_event_t ev = {
-			.timestamp = bpf_ktime_get_ns(),
-			.pid = (*pid) >> 32,
-			.ret = 0,
-			.name = "tcp_set_v4_connect",
-			.saddr = tup.saddr,
-			.daddr = tup.daddr,
-			.sport = ntohs(tup.sport),
-			.dport = ntohs(tup.dport),
-			.netns = tup.netns,
-		};
-
-		bpf_perf_event_output(ctx, &tcp_v4_event, cpu, &ev, sizeof(ev));
-		bpf_map_delete_elem(&tuple_pid_v4, &tup);
-	}
-
 	return 0;
 }
 
