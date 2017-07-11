@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"unsafe"
 
 	"github.com/spf13/cobra"
 
@@ -82,8 +80,8 @@ func init() {
 	RootCmd.AddCommand(traceCmd)
 }
 
-func dispatchToLog(syscall *C.char, buf *bytes.Buffer, ret int64) error {
-	event, err := tracer.GetStruct(C.GoString(syscall), buf)
+func dispatchToLog(syscall string, buf *bytes.Buffer, ret int64) error {
+	event, err := tracer.GetStruct(syscall, buf)
 	if err != nil {
 		return err
 	}
@@ -92,17 +90,15 @@ func dispatchToLog(syscall *C.char, buf *bytes.Buffer, ret int64) error {
 }
 
 func handleEvent(data *[]byte) {
-	var cev tracer.CommonEvent
 	buf := bytes.NewBuffer(*data)
-	err := binary.Read(buf, binary.LittleEndian, &cev)
+	commonEvent, err := tracer.CommonEventFromBuffer(buf)
 	if err != nil {
-		fmt.Printf("failed to decode received data: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to decode common event data: %v\n", err)
 		return
 	}
-	syscall := (*C.char)(unsafe.Pointer(&cev.Syscall))
 	fmt.Printf("syscall %s pid %d return value %d ",
-		C.GoString(syscall), cev.Pid, cev.Ret)
-	err = dispatchToLog(syscall, buf, cev.Ret)
+		commonEvent.Syscall, commonEvent.Pid, commonEvent.Ret)
+	err = dispatchToLog(commonEvent.Syscall, buf, commonEvent.Ret)
 	if err != nil {
 		fmt.Printf("failed to dispatch event for log: %v\n", err)
 		return
