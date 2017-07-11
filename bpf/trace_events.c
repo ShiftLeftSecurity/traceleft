@@ -511,6 +511,22 @@ struct bpf_map_def SEC("maps/handle_tcp_set_state_progs_ret") handle_tcp_set_sta
 	.map_flags = 0,
 };
 
+struct bpf_map_def SEC("maps/handle_tcp_close_progs") handle_tcp_close_progs = {
+	.type = BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 32768,
+	.map_flags = 0,
+};
+
+struct bpf_map_def SEC("maps/handle_tcp_close_progs_ret") handle_tcp_close_progs_ret = {
+	.type = BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 32768,
+	.map_flags = 0,
+};
+
 SEC("kprobe/tcp_v4_connect")
 int kprobe__handle_tcp_v4_connect(struct pt_regs *ctx)
 {
@@ -567,6 +583,26 @@ int kretprobe__handle_tcp_set_state(struct pt_regs *ctx)
 	u64 pid = bpf_get_current_pid_tgid();
 	bpf_tail_call(ctx, (void *)&handle_tcp_set_state_progs_ret, pid >> 32);
 	bpf_tail_call(ctx, (void *)&handle_tcp_set_state_progs_ret, 0);
+
+	return 0;
+}
+
+SEC("kprobe/tcp_close")
+int kprobe__handle_tcp_close(struct pt_regs *ctx)
+{
+	u64 pid = bpf_get_current_pid_tgid();
+	bpf_tail_call(ctx, (void *)&handle_tcp_close_progs, pid >> 32);
+	bpf_tail_call(ctx, (void *)&handle_tcp_close_progs, 0);
+
+	return 0;
+}
+
+SEC("kretprobe/tcp_close")
+int kretprobe__handle_tcp_close(struct pt_regs *ctx)
+{
+	u64 pid = bpf_get_current_pid_tgid();
+	bpf_tail_call(ctx, (void *)&handle_tcp_close_progs_ret, pid >> 32);
+	bpf_tail_call(ctx, (void *)&handle_tcp_close_progs_ret, 0);
 
 	return 0;
 }

@@ -442,6 +442,8 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
 		return ev, nil
 
 	// network events
+	case "close_v4":
+		fallthrough
 	case "connect_v4":
 		ev := ConnectV4Event{}
 		if err := binary.Read(buf, binary.BigEndian, &ev); err != nil {
