@@ -1,7 +1,10 @@
 #include <uapi/linux/ptrace.h>
 #include <linux/kconfig.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Waddress-of-packed-member"
 #include <uapi/linux/bpf.h>
+#pragma clang diagnostic pop
 #include "bpf_helpers.h"
 
 #define PIN_GLOBAL_NS 2

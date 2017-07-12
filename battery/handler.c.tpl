@@ -4,7 +4,10 @@
 // Event args: {{ .Args }}
 
 #include <linux/kconfig.h>
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Waddress-of-packed-member"
 #include <linux/bpf.h>
+#pragma clang diagnostic pop
 #include <linux/types.h>
 #include "bpf_helpers.h"
 #include "event_structs.h"
