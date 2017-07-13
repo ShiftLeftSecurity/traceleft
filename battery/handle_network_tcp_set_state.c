@@ -1,6 +1,6 @@
 /* handle_network_*.c
 
- This file build the BPF battery to trace established TCP network connections
+ This file builds the BPF battery to trace established TCP network connections
 
  Functions Probed
  ----------------
@@ -53,7 +53,7 @@ struct bpf_map_def SEC("maps/events") tcp_v4_event =
 	.namespace = "traceleft",
 };
 
-// This is stores the PID for a given tuple which will be updated during tcp_v4_connect
+// This stores the PID for a given tuple which will be updated during tcp_v4_connect
 // call and looked up during tcp_set_state to get the corresponding PID
 struct bpf_map_def SEC("maps/tuple_pid_v4") tuple_pid_v4 =
 {
@@ -65,49 +65,6 @@ struct bpf_map_def SEC("maps/tuple_pid_v4") tuple_pid_v4 =
 	.pinning = PIN_GLOBAL_NS,
 	.namespace = "traceleft",
 };
-
-// This helper builds the tuple with sock struct populated from connect
-__attribute__((always_inline))
-static int read_tuple_v4(tuple_v4_t *tup, struct sock *skp)
-{
-	u32 saddr = 0, daddr = 0, net_ns_inum = 0;
-	u16 sport = 0, dport = 0;
-	possible_net_t skc_net;
-
-	bpf_probe_read(&saddr, sizeof(saddr), &skp->__sk_common.skc_rcv_saddr);
-	bpf_probe_read(&daddr, sizeof(daddr), &skp->__sk_common.skc_daddr);
-	bpf_probe_read(&sport, sizeof(sport), &((struct inet_sock *)skp)->inet_sport);
-	bpf_probe_read(&dport, sizeof(dport), &skp->__sk_common.skc_dport);
-
-#ifdef CONFIG_NET_NS
-	bpf_probe_read(&skc_net, sizeof(skc_net), &skp->__sk_common.skc_net);
-	bpf_probe_read(&net_ns_inum, sizeof(net_ns_inum), &skc_net.net->ns.inum);
-#else
-	net_ns_inum = 0;
-#endif
-
-	tup->saddr = saddr;
-	tup->daddr = daddr;
-	tup->sport = sport;
-	tup->dport = dport;
-	tup->netns = net_ns_inum;
-
-	// if addresses or ports are 0, ignore
-	if (saddr == 0 || daddr == 0 || sport == 0 || dport == 0) {
-		return 0;
-	}
-
-	return 1;
-}
-
-// Helper to check if family is AF_INET ot AF_INET6
-__attribute__((always_inline))
-static bool check_family(struct sock *sk, u16 expected_family) {
-	u16 family = 0;
-	bpf_probe_read(&family, sizeof(family), &sk->__sk_common.skc_family);
-
-	return family == expected_family;
-}
 
 SEC("kretprobe/handle_tcp_set_state")
 int kretprobe__handle_tcp_set_state(struct pt_regs *ctx)
@@ -160,7 +117,7 @@ int kprobe__handle_tcp_set_state(struct pt_regs *ctx)
 
 		bpf_perf_event_output(ctx, &tcp_v4_event, cpu, &ev, sizeof(ev));
 		bpf_map_delete_elem(&tuple_pid_v4, &tup);
-    	}
+	}
 
 	return 0;
 }
