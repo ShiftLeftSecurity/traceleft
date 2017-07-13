@@ -80,8 +80,8 @@ func init() {
 	RootCmd.AddCommand(traceCmd)
 }
 
-func dispatchToLog(syscall string, buf *bytes.Buffer, ret int64) error {
-	event, err := tracer.GetStruct(syscall, buf)
+func dispatchToLog(name string, buf *bytes.Buffer, ret int64) error {
+	event, err := tracer.GetStruct(name, buf)
 	if err != nil {
 		return err
 	}
@@ -96,9 +96,9 @@ func handleEvent(data *[]byte) {
 		fmt.Fprintf(os.Stderr, "failed to decode common event data: %v\n", err)
 		return
 	}
-	fmt.Printf("syscall %s pid %d return value %d ",
-		commonEvent.Syscall, commonEvent.Pid, commonEvent.Ret)
-	err = dispatchToLog(commonEvent.Syscall, buf, commonEvent.Ret)
+	fmt.Printf("name %s pid %d return value %d ",
+		commonEvent.Name, commonEvent.Pid, commonEvent.Ret)
+	err = dispatchToLog(commonEvent.Name, buf, commonEvent.Ret)
 	if err != nil {
 		fmt.Printf("failed to dispatch event for log: %v\n", err)
 		return

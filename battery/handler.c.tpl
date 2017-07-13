@@ -4,7 +4,10 @@
 // Event args: {{ .Args }}
 
 #include <linux/kconfig.h>
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Waddress-of-packed-member"
 #include <linux/bpf.h>
+#pragma clang diagnostic pop
 #include <linux/types.h>
 #include "bpf_helpers.h"
 #include "event_structs.h"
@@ -45,7 +48,7 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 
 	{{ .Name }}_event_t evt = {
 		.timestamp = bpf_ktime_get_ns(),
-		.syscall = "{{ .Name }}",
+		.name = "{{ .Name }}",
 		.pid = pid >> 32,
 		.ret = PT_REGS_RC(ctx),
 	};

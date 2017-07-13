@@ -7,7 +7,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	char filename[256];
 	u64 mode;
 } chmod_event_t;
@@ -16,7 +16,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	char filename[256];
 	uid_t user;
 	gid_t group;
@@ -26,7 +26,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	u64 fd;
 } close_event_t;
 
@@ -34,7 +34,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	u64 fd;
 	u64 mode;
 } fchmod_event_t;
@@ -43,7 +43,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	s64 dfd;
 	char filename[256];
 	u64 mode;
@@ -53,7 +53,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	u64 fd;
 	uid_t user;
 	gid_t group;
@@ -63,7 +63,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	s64 dfd;
 	char filename[256];
 	uid_t user;
@@ -75,7 +75,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	char pathname[256];
 	u64 mode;
 } mkdir_event_t;
@@ -84,7 +84,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	s64 dfd;
 	char pathname[256];
 	u64 mode;
@@ -94,7 +94,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	char filename[256];
 	s64 flags;
 	u64 mode;
@@ -104,7 +104,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	u64 fd;
 	char buf[256];
 	int64_t count;
@@ -114,7 +114,7 @@ typedef struct {
 	u64 timestamp;
 	int64_t pid;
 	long ret;
-	char syscall[64];
+	char name[64];
 	u64 fd;
 	char buf[256];
 	int64_t count;

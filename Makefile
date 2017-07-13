@@ -128,7 +128,7 @@ handlers:
 clean:
 	rm -rf $(BIN_DIR) \
 		$(BUILD_DIR) \
-		$(BATTERY_DIR)/handle_*.c \
+		$(BATTERY_DIR)/handle_syscall_*.c \
 		$(BATTERY_DIR)/out \
 		$(BPF_DIR)/out
 

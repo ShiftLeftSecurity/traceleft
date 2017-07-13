@@ -95,7 +95,7 @@ func buildSource(event *Event, tpl string, destDir string) error {
 		return fmt.Errorf("could not parse template: %v", err)
 	}
 
-	evPath := fmt.Sprintf("handle_%s.c", event.Name)
+	evPath := fmt.Sprintf("handle_syscall_%s.c", event.Name)
 
 	fi, err := os.Create(filepath.Join(destDir, evPath))
 	if err != nil {
