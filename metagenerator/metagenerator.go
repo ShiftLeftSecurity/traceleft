@@ -418,7 +418,7 @@ func (e ConnectV4Event) String(ret int64) string {
 // network helper functions
 
 func inet_ntoa(ip uint32) string {
-	return fmt.Sprintf("%d.%d.%d.%d", byte(ip >> 24), byte(ip >> 16), byte(ip >> 8), byte(ip))
+	return fmt.Sprintf("%d.%d.%d.%d", byte(ip), byte(ip >> 8), byte(ip >> 16), byte(ip >> 24))
 }
 `
 
@@ -527,7 +527,7 @@ const getStructEpilogue = `
 		fallthrough
 	case "connect_v4":
 		ev := ConnectV4Event{}
-		if err := binary.Read(buf, binary.BigEndian, &ev); err != nil {
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
 			return nil, err
 		}
 		return ev, nil

@@ -104,8 +104,8 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 			.name = "close_v4",
 			.saddr = tup.saddr,
 			.daddr = tup.daddr,
-			.sport = tup.sport,
-			.dport = tup.dport,
+			.sport = ntohs(tup.sport),
+			.dport = ntohs(tup.dport),
 			.netns = tup.netns,
 		};
 
