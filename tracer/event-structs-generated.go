@@ -753,7 +753,15 @@ func (e ConnectV4Event) Hash() (string, error) {
 }
 
 func (e ConnectV4Event) Metric() *Metric {
-	return nil
+	return &Metric{
+		ConnectV4Event: &ProtobufConnectV4Event{
+			Saddr: e.Saddr,
+			Daddr: e.Daddr,
+			Sport: uint32(e.Sport),
+			Dport: uint32(e.Dport),
+			Netns: e.Netns,
+		},
+	}
 }
 
 // network helper functions

@@ -13,6 +13,14 @@ message ProtobufCommonEvent {
 	string Name = 4;
 }
 
+message ProtobufConnectV4Event {
+	uint32 Saddr = 1;
+	uint32 Daddr = 2;
+	uint32 Sport = 3;
+	uint32 Dport = 4;
+	uint32 Netns = 5;
+}
+
 message ProtobufChmodEvent {
 	bytes filename = 1;
 	uint64 mode = 2;
@@ -91,16 +99,17 @@ message Empty {}
 message Metric {
 	uint64 Count = 1;
 	ProtobufCommonEvent CommonEvent = 2;
-	ProtobufChmodEvent ChmodEvent = 3;
-	ProtobufChownEvent ChownEvent = 4;
-	ProtobufCloseEvent CloseEvent = 5;
-	ProtobufFchmodEvent FchmodEvent = 6;
-	ProtobufFchmodatEvent FchmodatEvent = 7;
-	ProtobufFchownEvent FchownEvent = 8;
-	ProtobufFchownatEvent FchownatEvent = 9;
-	ProtobufMkdirEvent MkdirEvent = 10;
-	ProtobufMkdiratEvent MkdiratEvent = 11;
-	ProtobufOpenEvent OpenEvent = 12;
-	ProtobufReadEvent ReadEvent = 13;
-	ProtobufWriteEvent WriteEvent = 14;
+	ProtobufConnectV4Event ConnectV4Event = 3;
+	ProtobufChmodEvent ChmodEvent = 4;
+	ProtobufChownEvent ChownEvent = 5;
+	ProtobufCloseEvent CloseEvent = 6;
+	ProtobufFchmodEvent FchmodEvent = 7;
+	ProtobufFchmodatEvent FchmodatEvent = 8;
+	ProtobufFchownEvent FchownEvent = 9;
+	ProtobufFchownatEvent FchownatEvent = 10;
+	ProtobufMkdirEvent MkdirEvent = 11;
+	ProtobufMkdiratEvent MkdiratEvent = 12;
+	ProtobufOpenEvent OpenEvent = 13;
+	ProtobufReadEvent ReadEvent = 14;
+	ProtobufWriteEvent WriteEvent = 15;
 }

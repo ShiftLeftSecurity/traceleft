@@ -509,7 +509,15 @@ func (e ConnectV4Event) Hash() (string, error) {
 }
 
 func (e ConnectV4Event) Metric() *Metric {
-	return nil
+	return &Metric{
+		ConnectV4Event: &ProtobufConnectV4Event{
+			Saddr: e.Saddr,
+			Daddr: e.Daddr,
+			Sport: uint32(e.Sport),
+			Dport: uint32(e.Dport),
+			Netns: e.Netns,
+		},
+	}
 }
 
 // network helper functions
@@ -720,6 +728,14 @@ message ProtobufCommonEvent {
 	int64 Ret = 3;
 	string Name = 4;
 }
+
+message ProtobufConnectV4Event {
+	uint32 Saddr = 1;
+	uint32 Daddr = 2;
+	uint32 Sport = 3;
+	uint32 Dport = 4;
+	uint32 Netns = 5;
+}
 `
 
 var tmplFuncMap = template.FuncMap{
@@ -748,8 +764,9 @@ const protoMetricTemplate = `
 message Metric {
 	uint64 Count = 1;
 	ProtobufCommonEvent CommonEvent = 2;
+	ProtobufConnectV4Event ConnectV4Event = 3;
 	{{- range $index, $syscall := . }}
-	Protobuf{{ $syscall.Name }} {{ $syscall.Name }} = {{ incn $index 3 }};
+	Protobuf{{ $syscall.Name }} {{ $syscall.Name }} = {{ incn $index 4 }};
 	{{- end }}
 }
 `
