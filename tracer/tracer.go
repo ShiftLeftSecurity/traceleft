@@ -47,9 +47,10 @@ type EventData struct {
 }
 
 type Tracer struct {
-	Probe    *probe.Probe
-	perfMap  *elflib.PerfMap
-	stopChan chan struct{}
+	Probe             *probe.Probe
+	perfMap           *elflib.PerfMap
+	perfMapFileEvents *elflib.PerfMap
+	stopChan          chan struct{}
 }
 
 func (e *CommonEvent) Proto() *ProtobufCommonEvent {
@@ -75,7 +76,7 @@ func New(callback func(*[]byte), cacheSize int) (*Tracer, error) {
 	channel := make(chan []byte)
 	perfMap, err := elflib.InitPerfMap(p.BPFModule(), "events", channel, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to init perf map: %v", err)
+		return nil, fmt.Errorf("failed to init events perf map: %v", err)
 	}
 
 	perfMap.SetTimestampFunc(timestamp)

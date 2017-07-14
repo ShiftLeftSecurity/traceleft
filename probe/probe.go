@@ -49,6 +49,9 @@ func newHandler(elfBPF []byte) (*Handler, error) {
 		"maps/events": {
 			SkipPerfMapInitialization: true,
 		},
+		"maps/file_events": {
+			SkipPerfMapInitialization: true,
+		},
 	}
 
 	if err := handlerBPF.Load(elfSectionParams); err != nil {
@@ -120,6 +123,17 @@ func (probe *Probe) registerHandler(programID uint64, pid int, handler *Handler)
 	}
 	if err := probe.module.UpdateElement(progIDTable, unsafe.Pointer(&pid), unsafe.Pointer(&programID), 0); err != nil {
 		return fmt.Errorf("error updating the program id table: %v", err)
+	}
+
+	pidsToWatchName := "file_events_pids_to_watch"
+	watchMap := probe.module.Map(pidsToWatchName)
+	if watchMap == nil {
+		return fmt.Errorf("%q doesn't exist", pidsToWatchName)
+	}
+
+	var one uint32 = 1
+	if err := probe.module.UpdateElement(watchMap, unsafe.Pointer(&pid), unsafe.Pointer(&one), 0); err != nil {
+		return fmt.Errorf("error updating %q: %v", watchMap.Name, err)
 	}
 
 	if _, ok := probe.pidToHandlers[pid]; !ok {

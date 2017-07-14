@@ -38,6 +38,7 @@ var (
 		},
 		Run: cmdTrace,
 	}
+	ctx tracer.Context
 
 	handlerCacheSize      int
 	collectorAddr         string
@@ -48,6 +49,7 @@ func init() {
 	traceCmd.Flags().IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
 	traceCmd.Flags().StringVar(&collectorAddr, "collector-addr", "", "addr of the collector service ('host:port' pair w/o protocol). otherwise events are logged to stdout")
 	traceCmd.Flags().BoolVar(&collectorWithInsecure, "collector-insecure", false, "disable transport security for collector connection")
+	ctx.Fds = tracer.NewFdMap()
 }
 
 var eventChan chan *tracer.EventData
@@ -72,7 +74,7 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 		go func() {
 			for event := range eventChan {
 				fmt.Printf("name %s pid %d program id %d return value %d %s\n",
-					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, event.Event.String(event.Common.Ret))
+					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, event.Event.String(event.Common.Ret, ctx, event.Common))
 			}
 		}()
 	}

@@ -9,11 +9,60 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net"
+	"os"
+	"strings"
+	"sync"
 	"syscall"
 	"unsafe"
 )
 
 import "C"
+
+type FdInfo struct {
+	Path  string
+	Ino   uint64
+	Major uint64
+	Minor uint64
+}
+
+type FdMap struct {
+	sync.RWMutex
+	mp map[uint32]map[uint32]FdInfo
+}
+
+func NewFdMap() *FdMap {
+	return &FdMap{
+		mp: make(map[uint32]map[uint32]FdInfo),
+	}
+}
+
+func (f *FdMap) Get(pid, fd uint32) (*FdInfo, bool) {
+	f.RLock()
+	defer f.RUnlock()
+
+	inner, ok := f.mp[pid]
+	if !ok {
+		return nil, ok
+	}
+
+	info, ok := inner[fd]
+	return &info, ok
+}
+
+func (f *FdMap) Put(pid, fd uint32, info FdInfo) {
+	f.Lock()
+	defer f.Unlock()
+
+	if _, ok := f.mp[pid]; !ok {
+		f.mp[pid] = make(map[uint32]FdInfo)
+	}
+
+	f.mp[pid][fd] = info
+}
+
+type Context struct {
+	Fds *FdMap
+}
 
 // kernel structures
 
@@ -156,6 +205,27 @@ type UserMsghdr struct {
 	MsgFlags      uint64
 }
 
+func (e FileEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+	name, err := procLookupPath(uint32(ce.Pid), uint32(e.Fd))
+	if err != nil {
+		name = "unknown"
+	}
+
+	fdInfo := FdInfo{Path: name, Ino: e.Ino, Major: e.Major, Minor: e.Minor}
+
+	// ignore entries not backed by files, like sockets or anonymous inodes
+	if strings.HasPrefix(fdInfo.Path, "/") {
+		ctx.Fds.Put(uint32(ce.Pid), uint32(e.Fd), fdInfo)
+	}
+
+	return fmt.Sprintf("Fd %d ", e.Fd)
+}
+
+// FileEvent is not meant to be seen by the users
+func (e FileEvent) Metric() *Metric {
+	return nil
+}
+
 // syscall data
 
 type ChmodEvent struct {
@@ -247,13 +317,17 @@ func bufLen(buf [256]byte) int {
 }
 
 type Event interface {
-	String(ret int64) string
+	String(ret int64, ctx Context, ce CommonEvent) string
 	Metric() *Metric
+}
+
+func procLookupPath(pid, fd uint32) (string, error) {
+	return os.Readlink(fmt.Sprintf("/proc/%d/fd/%d", pid, fd))
 }
 
 type DefaultEvent struct{}
 
-func (w DefaultEvent) String(ret int64) string {
+func (w DefaultEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	return ""
 }
 
@@ -261,7 +335,7 @@ func (w DefaultEvent) Metric() *Metric {
 	return nil
 }
 
-func (e ChmodEvent) String(ret int64) string {
+func (e ChmodEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
@@ -270,7 +344,7 @@ func (e ChmodEvent) String(ret int64) string {
 	return fmt.Sprintf("Filename %q Mode %d ", bufferGo, e.Mode)
 }
 
-func (e ChownEvent) String(ret int64) string {
+func (e ChownEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
@@ -279,17 +353,53 @@ func (e ChownEvent) String(ret int64) string {
 	return fmt.Sprintf("Filename %q User %d Group %d ", bufferGo, e.User, e.Group)
 }
 
-func (e CloseEvent) String(ret int64) string {
+func (e CloseEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+	fileName := "unknown"
+	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
+	if ok {
+		var stat syscall.Stat_t
+		err := syscall.Stat(info.Path, &stat)
+		if err != nil {
+			if err == syscall.ENOENT {
+				// the file doesn't exist anymore, it's probably "info.Path"
+				// but we're not sure
+				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+			}
+		}
+		if info.Ino == stat.Ino &&
+			info.Major == stat.Dev>>8 &&
+			info.Minor == stat.Dev&0xff {
+			fileName = info.Path
+		}
+	}
 
-	return fmt.Sprintf("Fd %d ", e.Fd)
+	return fmt.Sprintf("Fd %d<%s> ", e.Fd, fileName)
 }
 
-func (e FchmodEvent) String(ret int64) string {
+func (e FchmodEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+	fileName := "unknown"
+	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
+	if ok {
+		var stat syscall.Stat_t
+		err := syscall.Stat(info.Path, &stat)
+		if err != nil {
+			if err == syscall.ENOENT {
+				// the file doesn't exist anymore, it's probably "info.Path"
+				// but we're not sure
+				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+			}
+		}
+		if info.Ino == stat.Ino &&
+			info.Major == stat.Dev>>8 &&
+			info.Minor == stat.Dev&0xff {
+			fileName = info.Path
+		}
+	}
 
-	return fmt.Sprintf("Fd %d Mode %d ", e.Fd, e.Mode)
+	return fmt.Sprintf("Fd %d<%s> Mode %d ", e.Fd, fileName, e.Mode)
 }
 
-func (e FchmodatEvent) String(ret int64) string {
+func (e FchmodatEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
@@ -298,12 +408,30 @@ func (e FchmodatEvent) String(ret int64) string {
 	return fmt.Sprintf("Dfd %d Filename %q Mode %d ", e.Dfd, bufferGo, e.Mode)
 }
 
-func (e FchownEvent) String(ret int64) string {
+func (e FchownEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+	fileName := "unknown"
+	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
+	if ok {
+		var stat syscall.Stat_t
+		err := syscall.Stat(info.Path, &stat)
+		if err != nil {
+			if err == syscall.ENOENT {
+				// the file doesn't exist anymore, it's probably "info.Path"
+				// but we're not sure
+				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+			}
+		}
+		if info.Ino == stat.Ino &&
+			info.Major == stat.Dev>>8 &&
+			info.Minor == stat.Dev&0xff {
+			fileName = info.Path
+		}
+	}
 
-	return fmt.Sprintf("Fd %d User %d Group %d ", e.Fd, e.User, e.Group)
+	return fmt.Sprintf("Fd %d<%s> User %d Group %d ", e.Fd, fileName, e.User, e.Group)
 }
 
-func (e FchownatEvent) String(ret int64) string {
+func (e FchownatEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
@@ -312,7 +440,7 @@ func (e FchownatEvent) String(ret int64) string {
 	return fmt.Sprintf("Dfd %d Filename %q User %d Group %d Flag %d ", e.Dfd, bufferGo, e.User, e.Group, e.Flag)
 }
 
-func (e MkdirEvent) String(ret int64) string {
+func (e MkdirEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
 	length := C.int(0)
 	length = C.int(bufLen(e.Pathname))
@@ -321,7 +449,7 @@ func (e MkdirEvent) String(ret int64) string {
 	return fmt.Sprintf("Pathname %q Mode %d ", bufferGo, e.Mode)
 }
 
-func (e MkdiratEvent) String(ret int64) string {
+func (e MkdiratEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
 	length := C.int(0)
 	length = C.int(bufLen(e.Pathname))
@@ -330,7 +458,7 @@ func (e MkdiratEvent) String(ret int64) string {
 	return fmt.Sprintf("Dfd %d Pathname %q Mode %d ", e.Dfd, bufferGo, e.Mode)
 }
 
-func (e OpenEvent) String(ret int64) string {
+func (e OpenEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
@@ -339,7 +467,25 @@ func (e OpenEvent) String(ret int64) string {
 	return fmt.Sprintf("Filename %q Flags %d Mode %d ", bufferGo, e.Flags, e.Mode)
 }
 
-func (e ReadEvent) String(ret int64) string {
+func (e ReadEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+	fileName := "unknown"
+	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
+	if ok {
+		var stat syscall.Stat_t
+		err := syscall.Stat(info.Path, &stat)
+		if err != nil {
+			if err == syscall.ENOENT {
+				// the file doesn't exist anymore, it's probably "info.Path"
+				// but we're not sure
+				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+			}
+		}
+		if info.Ino == stat.Ino &&
+			info.Major == stat.Dev>>8 &&
+			info.Minor == stat.Dev&0xff {
+			fileName = info.Path
+		}
+	}
 	buffer := (*C.char)(unsafe.Pointer(&e.Buf))
 	length := C.int(0)
 	if ret > 0 {
@@ -347,10 +493,28 @@ func (e ReadEvent) String(ret int64) string {
 	}
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Fd %d Buf %q Count %d ", e.Fd, bufferGo, e.Count)
+	return fmt.Sprintf("Fd %d<%s> Buf %q Count %d ", e.Fd, fileName, bufferGo, e.Count)
 }
 
-func (e WriteEvent) String(ret int64) string {
+func (e WriteEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+	fileName := "unknown"
+	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
+	if ok {
+		var stat syscall.Stat_t
+		err := syscall.Stat(info.Path, &stat)
+		if err != nil {
+			if err == syscall.ENOENT {
+				// the file doesn't exist anymore, it's probably "info.Path"
+				// but we're not sure
+				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+			}
+		}
+		if info.Ino == stat.Ino &&
+			info.Major == stat.Dev>>8 &&
+			info.Minor == stat.Dev&0xff {
+			fileName = info.Path
+		}
+	}
 	buffer := (*C.char)(unsafe.Pointer(&e.Buf))
 	length := C.int(0)
 	if ret > 0 {
@@ -358,7 +522,7 @@ func (e WriteEvent) String(ret int64) string {
 	}
 	bufferGo := C.GoStringN(buffer, length)
 
-	return fmt.Sprintf("Fd %d Buf %q Count %d ", e.Fd, bufferGo, e.Count)
+	return fmt.Sprintf("Fd %d<%s> Buf %q Count %d ", e.Fd, fileName, bufferGo, e.Count)
 }
 
 func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
@@ -445,6 +609,13 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
 		ev.Count = int64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
+	// file events
+	case "fd_install":
+		ev := FileEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
 	// network events
 	case "close_v4":
 		fallthrough
@@ -495,12 +666,12 @@ type ConnectV6Event struct {
 
 // network events string functions
 
-func (e ConnectV4Event) String(ret int64) string {
+func (e ConnectV4Event) String(ret int64, ctx Context, ce CommonEvent) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa(e.Saddr),
 		inet_ntoa(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
 
-func (e ConnectV6Event) String(ret int64) string {
+func (e ConnectV6Event) String(ret int64, ctx Context, ce CommonEvent) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa6(e.Saddr),
 		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
@@ -682,4 +853,13 @@ func (e WriteEvent) Metric() *Metric {
 			Count: e.Count,
 		},
 	}
+}
+
+// file events struct
+
+type FileEvent struct {
+	Fd    uint64
+	Ino   uint64
+	Major uint64
+	Minor uint64
 }
