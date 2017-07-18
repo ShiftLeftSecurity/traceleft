@@ -1,2 +1,2 @@
-trace %PID% %BASEDIR%/battery/out/handle_write.bpf
+trace %PID% %BASEDIR%/battery/out/handle_syscall_write.bpf
 sleep 2

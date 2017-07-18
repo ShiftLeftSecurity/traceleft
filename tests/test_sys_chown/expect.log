@@ -1,1 +1,1 @@
-syscall chown pid %PID% return value 0 Filename "/tmp/traceleft-trace-out/test_sys_chown" User 0 Group 0
+event chown pid %PID% return value 0 Filename "/tmp/traceleft-trace-out/test_sys_chown" User 0 Group 0

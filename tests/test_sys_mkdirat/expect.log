@@ -1,1 +1,1 @@
-syscall mkdirat pid %PID% return value 0 Dfd 42 Pathname "/tmp/traceleft-trace-out/test_mkdirat" Mode 493
+event mkdirat pid %PID% return value 0 Dfd 42 Pathname "/tmp/traceleft-trace-out/test_mkdirat" Mode 493

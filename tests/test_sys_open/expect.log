@@ -1,1 +1,1 @@
-syscall open pid %PID% return value %FD% Filename "/tmp/traceleft-trace-out/test_fd" Flags 66 Mode 493
+event open pid %PID% return value %FD% Filename "/tmp/traceleft-trace-out/test_fd" Flags 66 Mode 493
