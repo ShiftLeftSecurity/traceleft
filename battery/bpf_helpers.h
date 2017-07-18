@@ -140,4 +140,20 @@ static int (*bpf_l4_csum_replace)(void *ctx, int off, int from, int to, int flag
 				(void *)(PT_REGS_FP(ctx) + sizeof(ip))); })
 #endif
 
+// FNV hash parameters:
+// https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV_hash_parameters
+__attribute__((always_inline))
+static inline u64 fnv64a_init() {
+	return 0xcbf29ce484222325;
+}
+
+__attribute__((always_inline))
+static inline void fnv64a_update(u64 *hash, const char *buf, int size) {
+	const u64 prime = 0x100000001b3;
+	#pragma clang loop unroll(full)
+	for (int i = 0; i < size; i++) {
+		*hash = (*hash ^ buf[i]) * prime;
+	}
+}
+
 #endif
