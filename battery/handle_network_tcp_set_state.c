@@ -5,6 +5,7 @@
  Functions Probed
  ----------------
  * tcp_v4_connect : Kprobe/Kretprobe
+ * tcp_v6_connect : Kprobe/Kretprobe
  * tcp_set_state : Kprobe
  * tcp_close : Kprobe
 
@@ -42,7 +43,7 @@
 
 // This is the event map where the outgoing perf event is stored. It will be updated
 // from the tcp_set_state call which is when we know that connection is established
-struct bpf_map_def SEC("maps/events") tcp_v4_event =
+struct bpf_map_def SEC("maps/events") tcp_event =
 {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
 	.key_size = sizeof(int),
@@ -59,6 +60,19 @@ struct bpf_map_def SEC("maps/tuple_pid_v4") tuple_pid_v4 =
 {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(tuple_v4_t),
+	.value_size = sizeof(__u64),
+	.max_entries = 1024,
+	.map_flags = 0,
+	.pinning = PIN_GLOBAL_NS,
+	.namespace = "traceleft",
+};
+
+// This stores the PID for a given tuple which will be updated during tcp_v6_connect
+// call and looked up during tcp_set_state to get the corresponding PID
+struct bpf_map_def SEC("maps/tuple_pid_v6") tuple_pid_v6 =
+{
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(tuple_v6_t),
 	.value_size = sizeof(__u64),
 	.max_entries = 1024,
 	.map_flags = 0,
@@ -115,8 +129,39 @@ int kprobe__handle_tcp_set_state(struct pt_regs *ctx)
 			.netns = tup.netns,
 		};
 
-		bpf_perf_event_output(ctx, &tcp_v4_event, cpu, &ev, sizeof(ev));
+		bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
 		bpf_map_delete_elem(&tuple_pid_v4, &tup);
+	} else if (check_family(skp, AF_INET6)) {
+		tuple_v6_t tup = { };
+		if (!read_tuple_v6(&tup, skp)) {
+			return 0;
+		}
+
+		if (state == TCP_CLOSE) {
+			bpf_map_delete_elem(&tuple_pid_v6, &tup);
+			return 0;
+		}
+
+		u64 *pid;
+		pid = bpf_map_lookup_elem(&tuple_pid_v6, &tup);
+		if (pid == 0) {
+			return 0;	// missed entry
+		}
+
+		tcp_v6_event_t ev = {
+			.timestamp = bpf_ktime_get_ns(),
+			.pid = (*pid) >> 32,
+			.ret = 0,
+			.name = "connect_v6",
+			.saddr = {tup.saddr[0], tup.saddr[1], tup.saddr[2], tup.saddr[3]},
+			.daddr = {tup.daddr[0], tup.daddr[1], tup.daddr[2], tup.daddr[3]},
+			.sport = ntohs(tup.sport),
+			.dport = ntohs(tup.dport),
+			.netns = tup.netns,
+		};
+
+		bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
+		bpf_map_delete_elem(&tuple_pid_v6, &tup);
 	}
 
 	return 0;
