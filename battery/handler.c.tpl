@@ -41,13 +41,23 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 		.name = "{{ .Name }}",
 		.pid = pid >> 32,
 		.ret = PT_REGS_RC(ctx),
+		.hash = fnv64a_init(),
 	};
+
+	fnv64a_update(&evt.hash, (char *)&evt.pid, sizeof(evt.pid));
+	fnv64a_update(&evt.hash, (char *)&evt.ret, sizeof(evt.ret));
+	fnv64a_update(&evt.hash, (char *)evt.name, sizeof(evt.name));
+
 	{{range $index, $element := .Args -}}
 	    {{if eq $element.Type "char"}}
 	bpf_probe_read(&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}), (void *) PT_REGS_PARM{{ $element.Position }}(args));
 	    {{- else }}
 	evt.{{ $element.Name }} = ({{ $element.Type }}) PT_REGS_PARM{{ $element.Position }}(args);
 	    {{- end }}
+	{{- end }}
+
+	{{ range $index, $element := .Args }}
+	fnv64a_update(&evt.hash, (char *)&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}));
 	{{- end }}
 
 	bpf_perf_event_output(ctx, &events, cpu, &evt, sizeof(evt));

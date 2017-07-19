@@ -545,6 +545,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	{{- range $index, $param := .Params}}
 	{{ $param.Type }} {{ $param.Name }}{{ $param.Suffix }};
 	{{- end }}
@@ -573,7 +574,6 @@ func bufLen(buf [256]byte) int {
 
 type Event interface {
 	String(ret int64) string
-	Hash() (string, error)
 	Metric() *Metric
 }
 
@@ -581,10 +581,6 @@ type DefaultEvent struct{}
 
 func (w DefaultEvent) String(ret int64) string {
 	return ""
-}
-
-func (w DefaultEvent) Hash() (string, error) {
-	return "", nil
 }
 
 func (w DefaultEvent) Metric() *Metric {
@@ -639,30 +635,6 @@ func (e {{ .Syscall.Name }}) Metric() *Metric {
 		{{- end }}
 		},
 	}
-}
-`
-
-const eventHashTemplate = `
-func (e {{ .Name }}) Hash() (string, error) {
-	var err error
-	hash := fnv.New64()
-
-	{{ range $index, $param := .Params }}
-		{{ if or (eq $param.Name "Buf") }}
-			_, err = hash.Write(e.{{ $param.Name }}[:len(e.{{ $param.Name }})])
-			if err != nil {
-				return "", err
-			}
-		{{ end }}
-		{{ if or (eq $param.Type "uint64") (eq $param.Type "int64") (eq $param.Type "uint32") (eq $param.Type "int32") (eq $param.Type "uint16") (eq $param.Type "int16")}}
-			err = binary.Write(hash, binary.LittleEndian, e.{{ $param.Name }})
-			if err != nil {
-				return "", err
-			}
-		{{ end }}
-	{{ end }}
-
-	return fmt.Sprintf("%x", hash.Sum64()), nil
 }
 `
 
@@ -727,6 +699,7 @@ message ProtobufCommonEvent {
 	int64 Pid = 2;
 	int64 Ret = 3;
 	string Name = 4;
+	uint64 Hash = 5;
 }
 
 message ProtobufConnectV4Event {
@@ -1010,14 +983,6 @@ func GenerateGoStructs(goSyscalls []Syscall) (string, error) {
 		goTmpl, err := template.New("go_ev").Parse(eventStringsTemplate)
 		if err != nil {
 			return "", fmt.Errorf("error templating event String functions: %v", err)
-		}
-		goTmpl.Execute(buf, sc)
-	}
-
-	for _, sc := range goSyscalls {
-		goTmpl, err := template.New("go_fnv").Parse(eventHashTemplate)
-		if err != nil {
-			return "", fmt.Errorf("error templating Hash function: %v", err)
 		}
 		goTmpl.Execute(buf, sc)
 	}

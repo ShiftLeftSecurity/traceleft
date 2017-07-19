@@ -8,6 +8,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	char filename[256];
 	u64 mode;
 } chmod_event_t;
@@ -17,6 +18,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	char filename[256];
 	uid_t user;
 	gid_t group;
@@ -27,6 +29,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	u64 fd;
 } close_event_t;
 
@@ -35,6 +38,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	u64 fd;
 	u64 mode;
 } fchmod_event_t;
@@ -44,6 +48,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	s64 dfd;
 	char filename[256];
 	u64 mode;
@@ -54,6 +59,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	u64 fd;
 	uid_t user;
 	gid_t group;
@@ -64,6 +70,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	s64 dfd;
 	char filename[256];
 	uid_t user;
@@ -76,6 +83,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	char pathname[256];
 	u64 mode;
 } mkdir_event_t;
@@ -85,6 +93,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	s64 dfd;
 	char pathname[256];
 	u64 mode;
@@ -95,6 +104,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	char filename[256];
 	s64 flags;
 	u64 mode;
@@ -105,6 +115,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	u64 fd;
 	char buf[256];
 	int64_t count;
@@ -115,6 +126,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	u64 fd;
 	char buf[256];
 	int64_t count;

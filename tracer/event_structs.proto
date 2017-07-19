@@ -11,6 +11,7 @@ message ProtobufCommonEvent {
 	int64 Pid = 2;
 	int64 Ret = 3;
 	string Name = 4;
+	uint64 Hash = 5;
 }
 
 message ProtobufConnectV4Event {

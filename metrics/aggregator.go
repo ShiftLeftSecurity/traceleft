@@ -23,7 +23,7 @@ type Aggregator struct {
 
 	collection []*tracer.Metric
 
-	eventHashes map[string]*tracer.Metric
+	eventHashes map[uint64]*tracer.Metric
 
 	intervalMilliseconds time.Duration
 }
@@ -51,7 +51,7 @@ func NewAggregator(opts AggregatorOptions, incoming <-chan *tracer.EventData, in
 		conn:                 conn,
 		client:               tracer.NewMetricCollectorClient(conn),
 		stop:                 make(chan bool),
-		eventHashes:          make(map[string]*tracer.Metric),
+		eventHashes:          make(map[uint64]*tracer.Metric),
 		intervalMilliseconds: intervalMilliseconds,
 	}
 
@@ -89,22 +89,8 @@ func (a *Aggregator) add(event *tracer.EventData) {
 	a.Lock()
 	defer a.Unlock()
 
-	hashCommonPart, err := event.Common.Hash()
-	if err != nil {
-		log.Printf("failed to generate hash\n")
-		return
-	}
-
-	hashEventPart, err := event.Event.Hash()
-	if err != nil {
-		log.Printf("failed to generate hash\n")
-		return
-	}
-
-	hash := hashCommonPart + hashEventPart
-
 	var metric *tracer.Metric
-	if metric, seen := a.eventHashes[hash]; seen {
+	if metric, seen := a.eventHashes[event.Common.Hash]; seen {
 		metric.Count++
 		return
 	}
@@ -113,7 +99,7 @@ func (a *Aggregator) add(event *tracer.EventData) {
 	metric.Count++
 	metric.CommonEvent = event.Common.Proto()
 
-	a.eventHashes[hash] = metric
+	a.eventHashes[event.Common.Hash] = metric
 
 	a.collection = append(a.collection, metric)
 }
@@ -143,7 +129,7 @@ func (a *Aggregator) send() error {
 	}
 
 	a.collection = nil
-	a.eventHashes = make(map[string]*tracer.Metric)
+	a.eventHashes = make(map[uint64]*tracer.Metric)
 	return nil
 }
 
