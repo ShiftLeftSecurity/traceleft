@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/sha512"
 	"fmt"
-	"os"
 	"strings"
 	"unsafe"
 
@@ -225,13 +224,13 @@ func New(cacheSize int) (*Probe, error) {
 	if err := bpffs.Mount(); err != nil {
 		return nil, err
 	}
-	// FIXME: just use go-bindata
-	// Meanwhile, make it configurable from environment variable
-	traceEventsFile := os.Getenv("TRACELEFT_TRACE_EVENTS_FILE")
-	if traceEventsFile == "" {
-		traceEventsFile = "./bpf/out/trace_events.bpf"
+
+	buf, err := Asset("trace_events.bpf")
+	if err != nil {
+		return nil, fmt.Errorf("couldn't find global BPF program asset: %v", err)
 	}
-	globalBPF := elflib.NewModule(traceEventsFile)
+	reader := bytes.NewReader(buf)
+	globalBPF := elflib.NewModuleFromReader(reader)
 
 	if err := globalBPF.Load(nil); err != nil {
 		return nil, fmt.Errorf("error loading global BPF: %v", err)
