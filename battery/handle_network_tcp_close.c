@@ -85,7 +85,7 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 	skp = (struct sock *) PT_REGS_PARM1(ctx);
 	// Read previous state and don't record events for connections
 	// that were not established
-	oldstate = bpf_probe_read(&oldstate, sizeof(oldstate), (u8 *)&skp->sk_state);
+	bpf_probe_read(&oldstate, sizeof(oldstate), (u8 *)&skp->sk_state);
 	if (oldstate == TCP_SYN_SENT || oldstate == TCP_SYN_RECV || oldstate == TCP_NEW_SYN_RECV) {
 		return 0;
 	}
