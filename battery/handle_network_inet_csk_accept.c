@@ -47,7 +47,7 @@
 
 // This is the event map where the outgoing perf event is stored. It will be updated
 // from the tcp_set_state call which is when we know that connection is established
-struct bpf_map_def SEC("maps/events") tcp_v4_event =
+struct bpf_map_def SEC("maps/events") tcp_event =
 {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
 	.key_size = sizeof(int),
@@ -103,12 +103,34 @@ int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 			.dport = ntohs(dport),
 			.netns = net_ns_inum,
 		};
-		
+
 		bpf_probe_read(&ev.saddr, sizeof(u32), &skp->__sk_common.skc_rcv_saddr);
 		bpf_probe_read(&ev.daddr, sizeof(u32), &skp->__sk_common.skc_daddr);
 
 		if (ev.saddr != 0 && ev.daddr != 0 && ev.sport != 0 && ev.dport != 0) {
-			bpf_perf_event_output(ctx, &tcp_v4_event, cpu, &ev, sizeof(ev));
+			bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
+		}
+	} else if (check_family(skp, AF_INET6)) {
+		tcp_v6_event_t ev = {
+			.timestamp = bpf_ktime_get_ns(),
+			.pid = pid >> 32,
+			.ret = 0,
+			.name = "accept_v6",
+			.sport = lport,
+			.dport = ntohs(dport),
+			.netns = net_ns_inum,
+		};
+
+		bpf_probe_read(&ev.saddr, sizeof(ev.saddr),
+			       &skp->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+		bpf_probe_read(&ev.daddr, sizeof(ev.daddr),
+			       &skp->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+
+		// do not send event if any IP address is 0 or any port is 0
+		if ((ev.saddr[0] | ev.saddr[1] | ev.saddr[2] | ev.saddr[3]) != 0 &&
+		    (ev.daddr[0] | ev.daddr[1] | ev.daddr[2] | ev.daddr[3]) != 0 &&
+		    ev.sport != 0 && ev.dport != 0) {
+			bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
 		}
 	}
 

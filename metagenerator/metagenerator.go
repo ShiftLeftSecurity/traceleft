@@ -553,6 +553,8 @@ const getStructEpilogue = `
 		return ev, nil
 	case "close_v6":
 		fallthrough
+	case "accept_v6":
+		fallthrough
 	case "connect_v6":
 		ev := ConnectV6Event{}
 		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
