@@ -8,14 +8,15 @@
  * tcp_v6_connect : Kprobe/Kretprobe
  * tcp_set_state : Kprobe
  * tcp_close : Kprobe
+ * inet_csk_accept : Kretprobe
 
  Short Description
  -----------------
  The actual established TCP connection information is only obtained if we hook
  onto the tcp_set_state function. As tcp_set_state events don't have the PID
  context, the only acceptable approach in this case would be to keep a map of
- a tuple->PID with key as an ipv4 tuple (containing skp derived stuff - saddr,
- daddr etc. from the tcp_v4_connect call) and value as PID. We can then use the
+ a tuple->PID with key as an ipv{4,6} tuple (containing skp derived stuff - saddr,
+ daddr etc. from the tcp_v{4,6}_connect call) and value as PID. We can then use the
  tuple from this map during tcp_set_state and fill out the our final event struct.
 
  TCP network event tracing is based on upstream work by Iago in IOVisor BCC
