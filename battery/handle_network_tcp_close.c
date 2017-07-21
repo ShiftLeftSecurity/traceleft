@@ -101,7 +101,10 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 	// Read previous state and don't record events for connections
 	// that were not established
 	bpf_probe_read(&oldstate, sizeof(oldstate), (u8 *)&skp->sk_state);
-	if (oldstate == TCP_SYN_SENT || oldstate == TCP_SYN_RECV || oldstate == TCP_NEW_SYN_RECV) {
+	if (oldstate == TCP_SYN_SENT ||
+	    oldstate == TCP_SYN_RECV ||
+	    oldstate == TCP_NEW_SYN_RECV ||
+	    oldstate == TCP_CLOSE) {
 		return 0;
 	}
 
