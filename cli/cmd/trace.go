@@ -73,8 +73,13 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 	} else {
 		go func() {
 			for event := range eventChan {
+				evString := event.Event.String(event.Common.Ret, ctx, event.Common)
+				if event.Common.Name == "fd_install" {
+					continue
+				}
+
 				fmt.Printf("name %s pid %d program id %d return value %d %s\n",
-					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, event.Event.String(event.Common.Ret, ctx, event.Common))
+					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, evString)
 			}
 		}()
 	}
