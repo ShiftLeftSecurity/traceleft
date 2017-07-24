@@ -33,6 +33,7 @@ var (
 	outfile     string
 	outfileLock sync.Mutex
 
+	ctx              tracer.Context
 	handlerCacheSize int
 
 	quiet bool
@@ -42,6 +43,7 @@ func init() {
 	flag.StringVar(&outfile, "outfile", "", "where to write output to (defaults to stdout)")
 	flag.IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
 	flag.BoolVar(&quiet, "quiet", false, "be quiet")
+	ctx.Fds = tracer.NewFdMap()
 }
 
 func parsePids(pidsStr string) ([]int, error) {

@@ -1,1 +1,1 @@
-event close pid %PID% return value 0 Fd %FD%
+event close pid %PID% return value 0 Fd %FD%<unknown>
