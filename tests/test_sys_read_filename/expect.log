@@ -1,0 +1,1 @@
+event read pid %PID% return value 1 Fd 3</proc/cpuinfo> Buf "p" Count 1
