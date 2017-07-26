@@ -47,10 +47,9 @@ type EventData struct {
 }
 
 type Tracer struct {
-	Probe             *probe.Probe
-	perfMap           *elflib.PerfMap
-	perfMapFileEvents *elflib.PerfMap
-	stopChan          chan struct{}
+	Probe    *probe.Probe
+	perfMap  *elflib.PerfMap
+	stopChan chan struct{}
 }
 
 func (e *CommonEvent) Proto() *ProtobufCommonEvent {
