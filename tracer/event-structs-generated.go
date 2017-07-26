@@ -25,14 +25,15 @@ type FdInfo struct {
 	Minor uint64
 }
 
+// Pid -> Fd -> FdInfo
 type FdMap struct {
 	sync.RWMutex
-	mp map[uint32]map[uint32]FdInfo
+	items map[uint32]map[uint32]FdInfo
 }
 
 func NewFdMap() *FdMap {
 	return &FdMap{
-		mp: make(map[uint32]map[uint32]FdInfo),
+		items: make(map[uint32]map[uint32]FdInfo),
 	}
 }
 
@@ -40,7 +41,7 @@ func (f *FdMap) Get(pid, fd uint32) (*FdInfo, bool) {
 	f.RLock()
 	defer f.RUnlock()
 
-	inner, ok := f.mp[pid]
+	inner, ok := f.items[pid]
 	if !ok {
 		return nil, ok
 	}
@@ -53,11 +54,11 @@ func (f *FdMap) Put(pid, fd uint32, info FdInfo) {
 	f.Lock()
 	defer f.Unlock()
 
-	if _, ok := f.mp[pid]; !ok {
-		f.mp[pid] = make(map[uint32]FdInfo)
+	if _, ok := f.items[pid]; !ok {
+		f.items[pid] = make(map[uint32]FdInfo)
 	}
 
-	f.mp[pid][fd] = info
+	f.items[pid][fd] = info
 }
 
 type Context struct {
