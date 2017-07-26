@@ -16,6 +16,12 @@
 #include "../bpf/events-map.h"
 #include "../bpf/program-id-map.h"
 
+/* This is a key/value store with the keys being pid_tgid and values being
+ * struct pt_regs.
+ *
+ * It is used to keep context between kprobe/handle_{{ .Name }} and
+ * kretprobe/handle_{{ .Name }}.
+ * */
 struct bpf_map_def SEC("maps/{{ .Name }}_args") {{ .Name }}args =
 {
 	.type = BPF_MAP_TYPE_HASH,

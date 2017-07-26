@@ -215,6 +215,12 @@ struct bpf_map_def SEC("maps/handle_chown_progs_ret") handle_chown_progs_ret = {
 	.map_flags = 0,
 };
 
+/* This is a key/value store with the keys being pid_tgid and values being
+ * fd_install_t.
+ *
+ * It is populated by userspace and read by the eBPF program to know which pids
+ * to watch.
+ * */
 struct bpf_map_def SEC("maps/file_events_pids_to_watch") file_events_pids_to_watch = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u32),
@@ -230,7 +236,13 @@ typedef struct {
 	struct file *file;
 } fd_install_t;
 
-struct bpf_map_def SEC("maps/fdinstall_ret") fdinstall_ret = {
+/* This is a key/value store with the keys being pid_tgid and values being
+ * fd_install_t.
+ *
+ * It is used to keep context between kprobe/fd_install and
+ * kretprobe/fd_install.
+ * */
+struct bpf_map_def SEC("maps/fdinstall_args") fdinstall_args = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u64),
 	.value_size = sizeof(fd_install_t),
@@ -264,7 +276,7 @@ int kprobe__fd_install(struct pt_regs *ctx)
 		return 0;
 	}
 
-	bpf_map_update_elem(&fdinstall_ret, &pid, &fd_i, BPF_ANY);
+	bpf_map_update_elem(&fdinstall_args, &pid, &fd_i, BPF_ANY);
 
 	return 0;
 }
@@ -275,24 +287,23 @@ int kretprobe__fd_install(struct pt_regs *ctx)
 	u64 pid = bpf_get_current_pid_tgid();
 	u32 cpu = bpf_get_smp_processor_id();
 	fd_install_t *fd_ip;
-	fd_ip = bpf_map_lookup_elem(&fdinstall_ret, &pid);
+	fd_ip = bpf_map_lookup_elem(&fdinstall_args, &pid);
 	if (fd_ip == NULL) {
 		return 0; // missed entry
 	}
-	bpf_map_delete_elem(&fdinstall_ret, &pid);
+	bpf_map_delete_elem(&fdinstall_args, &pid);
 
 	fd_install_t fd_i;
 	bpf_probe_read(&fd_i, sizeof(fd_i), fd_ip);
 
-	struct file f;
-	bpf_probe_read(&f, sizeof(f), fd_i.file);
-
+	struct inode *f_inode;
 	unsigned long i_ino;
 	struct super_block *sb = NULL;
 	dev_t s_dev;
 
-	bpf_probe_read(&i_ino, sizeof(i_ino), &f.f_inode->i_ino);
-	bpf_probe_read(&sb, sizeof(sb), &f.f_inode->i_sb);
+	bpf_probe_read(&f_inode, sizeof(f_inode), &fd_i.file->f_inode);
+	bpf_probe_read(&i_ino, sizeof(i_ino), &f_inode->i_ino);
+	bpf_probe_read(&sb, sizeof(sb), &f_inode->i_sb);
 	bpf_probe_read(&s_dev, sizeof(s_dev), &sb->s_dev);
 
 	u64 *program_id = bpf_map_lookup_elem(&program_id_per_pid, &pid);
