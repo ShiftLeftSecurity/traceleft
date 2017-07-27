@@ -2,13 +2,17 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	_ "net/http/pprof"
 )
 
 var cfgFile string
+var pprofListenAddr string
 
 var RootCmd = &cobra.Command{
 	Use:   "slagent",
@@ -25,17 +29,22 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.slagent.yaml)")
+	RootCmd.PersistentFlags().StringVar(&pprofListenAddr, "pprof-listen-addr", "", "listen address for HTTP profiling and instrumentation server")
 }
 
 func initConfig() {
-	if cfgFile == "" {
-		return
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+		viper.AutomaticEnv()
+
+		if err := viper.ReadInConfig(); err == nil {
+			fmt.Println("Using config file:", viper.ConfigFileUsed())
+		}
 	}
 
-	viper.SetConfigFile(cfgFile)
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if pprofListenAddr != "" {
+		go func() {
+			http.ListenAndServe(pprofListenAddr, nil)
+		}()
 	}
 }
