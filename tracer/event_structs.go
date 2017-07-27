@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"net"
 	"syscall"
 	"unsafe"
 )
@@ -444,23 +445,42 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
 	// network events
 	case "close_v4":
 		fallthrough
+	case "accept_v4":
+		fallthrough
 	case "connect_v4":
 		ev := ConnectV4Event{}
 		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
 			return nil, err
 		}
 		return ev, nil
-
+	case "close_v6":
+		fallthrough
+	case "accept_v6":
+		fallthrough
+	case "connect_v6":
+		ev := ConnectV6Event{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
 	default:
 		return DefaultEvent{}, nil
 	}
 }
 
-// network events struct
+// network events structs
 
 type ConnectV4Event struct {
 	Saddr uint32
 	Daddr uint32
+	Sport uint16
+	Dport uint16
+	Netns uint32
+}
+
+type ConnectV6Event struct {
+	Saddr [16]byte
+	Daddr [16]byte
 	Sport uint16
 	Dport uint16
 	Netns uint32
@@ -473,8 +493,17 @@ func (e ConnectV4Event) String(ret int64) string {
 		inet_ntoa(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
 
+func (e ConnectV6Event) String(ret int64) string {
+	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa6(e.Saddr),
+		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
+}
+
 // network helper functions
 
 func inet_ntoa(ip uint32) string {
 	return fmt.Sprintf("%d.%d.%d.%d", byte(ip), byte(ip>>8), byte(ip>>16), byte(ip>>24))
+}
+
+func inet_ntoa6(ip [16]byte) string {
+	return fmt.Sprintf("%v", net.IP(ip[:]))
 }

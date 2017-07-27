@@ -40,7 +40,11 @@
 #pragma clang diagnostic pop
 #include <net/inet_sock.h>
 #include <net/net_namespace.h>
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 #include "handle_network_tcp.h"
+#pragma clang diagnostic pop
 
 // This is the event map where the outgoing perf event is stored. It will be updated
 // from the tcp_set_state call which is when we know that connection is established
@@ -55,101 +59,80 @@ struct bpf_map_def SEC("maps/events") tcp_event =
 	.namespace = "traceleft",
 };
 
-// This stores the PID for a given tuple which will be updated during tcp_v4_connect
-// call and looked up during tcp_set_state to get the corresponding PID
-struct bpf_map_def SEC("maps/tuple_pid_v4") tuple_pid_v4 =
-{
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(tuple_v4_t),
-	.value_size = sizeof(__u64),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
-};
-
-// This stores the PID for a given tuple which will be updated during tcp_v6_connect
-// call and looked up during tcp_set_state to get the corresponding PID
-struct bpf_map_def SEC("maps/tuple_pid_v6") tuple_pid_v6 =
-{
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(tuple_v6_t),
-	.value_size = sizeof(__u64),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
-};
-
-SEC("kretprobe/handle_tcp_close")
-int kretprobe__handle_tcp_close(struct pt_regs *ctx)
+SEC("kprobe/handle_inet_csk_accept")
+int kretprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 {
 	// Dummy probe, needed by design
 	return 0;
 };
 
-SEC("kprobe/handle_tcp_close")
-int kprobe__handle_tcp_close(struct pt_regs *ctx)
+SEC("kretprobe/handle_inet_csk_accept")
+int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 {
+	struct sock *skp = (struct sock *) PT_REGS_RC(ctx);
 	u32 cpu = bpf_get_smp_processor_id();
 	u64 pid = bpf_get_current_pid_tgid();
 
-	struct sock *skp;
-	u8 oldstate;
-
-	skp = (struct sock *) PT_REGS_PARM1(ctx);
-	// Read previous state and don't record events for connections
-	// that were not established
-	bpf_probe_read(&oldstate, sizeof(oldstate), (u8 *)&skp->sk_state);
-	if (oldstate == TCP_SYN_SENT ||
-	    oldstate == TCP_SYN_RECV ||
-	    oldstate == TCP_NEW_SYN_RECV ||
-	    oldstate == TCP_CLOSE) {
+	if (skp == NULL) {
 		return 0;
 	}
 
-	if (check_family(skp, AF_INET)) {
-		tuple_v4_t tup = { };
-		if (!read_tuple_v4(&tup, skp)) {
-			bpf_map_delete_elem(&tuple_pid_v4, &tup);
-			return 0;
-		}
+	u16 lport, dport;
+	u32 net_ns_inum;
 
+	lport = 0;
+	dport = 0;
+
+	bpf_probe_read(&dport, sizeof(dport), &skp->__sk_common.skc_dport);
+	bpf_probe_read(&lport, sizeof(lport), &skp->__sk_common.skc_num);
+
+#ifdef CONFIG_NET_NS
+	possible_net_t skc_net;
+	bpf_probe_read(&skc_net, sizeof(skc_net), &skp->__sk_common.skc_net);
+	bpf_probe_read(&net_ns_inum, sizeof(net_ns_inum), &skc_net.net->ns.inum);
+#else
+	net_ns_inum = 0;
+#endif
+
+	if (check_family(skp, AF_INET)) {
 		tcp_v4_event_t ev = {
 			.timestamp = bpf_ktime_get_ns(),
 			.pid = pid >> 32,
 			.ret = 0,
-			.name = "close_v4",
-			.saddr = tup.saddr,
-			.daddr = tup.daddr,
-			.sport = ntohs(tup.sport),
-			.dport = ntohs(tup.dport),
-			.netns = tup.netns,
+			.name = "accept_v4",
+			.sport = lport,
+			.dport = ntohs(dport),
+			.netns = net_ns_inum,
 		};
 
-		bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
-		bpf_map_delete_elem(&tuple_pid_v4, &tup);
-	} else if (check_family(skp, AF_INET6)) {
-		tuple_v6_t tup = { };
-		if (!read_tuple_v6(&tup, skp)) {
-			bpf_map_delete_elem(&tuple_pid_v6, &tup);
-			return 0;
-		}
+		bpf_probe_read(&ev.saddr, sizeof(u32), &skp->__sk_common.skc_rcv_saddr);
+		bpf_probe_read(&ev.daddr, sizeof(u32), &skp->__sk_common.skc_daddr);
 
+		if (ev.saddr != 0 && ev.daddr != 0 && ev.sport != 0 && ev.dport != 0) {
+			bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
+		}
+	} else if (check_family(skp, AF_INET6)) {
 		tcp_v6_event_t ev = {
 			.timestamp = bpf_ktime_get_ns(),
 			.pid = pid >> 32,
 			.ret = 0,
-			.name = "close_v6",
-			.saddr = {tup.saddr[0], tup.saddr[1], tup.saddr[2], tup.saddr[3]},
-			.daddr = {tup.daddr[0], tup.daddr[1], tup.daddr[2], tup.daddr[3]},
-			.sport = ntohs(tup.sport),
-			.dport = ntohs(tup.dport),
-			.netns = tup.netns,
+			.name = "accept_v6",
+			.sport = lport,
+			.dport = ntohs(dport),
+			.netns = net_ns_inum,
 		};
 
-		bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
-		bpf_map_delete_elem(&tuple_pid_v6, &tup);
+		bpf_probe_read(&ev.saddr, sizeof(ev.saddr),
+			       &skp->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
+		bpf_probe_read(&ev.daddr, sizeof(ev.daddr),
+			       &skp->__sk_common.skc_v6_daddr.in6_u.u6_addr32);
+
+		// do not send event if any IP address is 0 or any port is 0
+		if ((ev.saddr[0] | ev.saddr[1] | ev.saddr[2] | ev.saddr[3]) != 0 &&
+		    (ev.daddr[0] | ev.daddr[1] | ev.daddr[2] | ev.daddr[3]) != 0 &&
+		    ev.sport != 0 && ev.dport != 0) {
+			bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
+		}
 	}
 
 	return 0;
@@ -159,4 +142,3 @@ char _license[] SEC("license") = "GPL";
 // this number will be interpreted by the elf loader to set the current running
 // kernel version
 __u32 _version SEC("version") = 0xFFFFFFFE;
-

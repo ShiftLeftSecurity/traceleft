@@ -46,8 +46,8 @@
 #include "handle_network_tcp.h"
 #pragma clang diagnostic pop
 
-// This stores the sock * to match kprobe and kretprobe for tcp_v4_connect call
-struct bpf_map_def SEC("maps/tcp_v4_connectsock") tcp_v4_connectsock =
+// This stores the sock * to match kprobe and kretprobe for tcp_v6_connect call
+struct bpf_map_def SEC("maps/tcp_v6_connectsock") tcp_v6_connectsock =
 {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u64),
@@ -57,10 +57,10 @@ struct bpf_map_def SEC("maps/tcp_v4_connectsock") tcp_v4_connectsock =
 
 // This stores the PID for a given tuple which will be updated during tcp_v4_connect
 // call and looked up during tcp_set_state to get the corresponding PID
-struct bpf_map_def SEC("maps/tuple_pid_v4") tuple_pid_v4 =
+struct bpf_map_def SEC("maps/tuple_pid_v6") tuple_pid_v6 =
 {
 	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(tuple_v4_t),
+	.key_size = sizeof(tuple_v6_t),
 	.value_size = sizeof(__u64),
 	.max_entries = 1024,
 	.map_flags = 0,
@@ -68,43 +68,43 @@ struct bpf_map_def SEC("maps/tuple_pid_v4") tuple_pid_v4 =
 	.namespace = "traceleft",
 };
 
-SEC("kretprobe/handle_tcp_v4_connect")
-int kretprobe__handle_tcp_v4_connect(struct pt_regs *ctx)
+SEC("kretprobe/handle_tcp_v6_connect")
+int kretprobe__handle_tcp_v6_connect(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	int ret = PT_REGS_RC(ctx);
 	if (ret != 0) {
 		// failed to send SYNC packet, may not have populated
 		// socket __sk_common.{skc_rcv_saddr, ...}
-		bpf_map_delete_elem(&tcp_v4_connectsock, &pid);
+		bpf_map_delete_elem(&tcp_v6_connectsock, &pid);
 		return 0;
 	}
 
 	struct sock **skpp;
-	skpp = bpf_map_lookup_elem(&tcp_v4_connectsock, &pid);
+	skpp = bpf_map_lookup_elem(&tcp_v6_connectsock, &pid);
 	if (skpp == 0) {
 		return 0;   // missed entry
 	}
 
 	struct sock *skp = *skpp;
-	bpf_map_delete_elem(&tcp_v4_connectsock, &pid);
+	bpf_map_delete_elem(&tcp_v6_connectsock, &pid);
 
-	tuple_v4_t tup = { };
-	if (!read_tuple_v4(&tup, skp)) {
+	tuple_v6_t tup = { };
+	if (!read_tuple_v6(&tup, skp)) {
 		return 0;
 	}
 
-	bpf_map_update_elem(&tuple_pid_v4, &tup, &pid, BPF_ANY);
+	bpf_map_update_elem(&tuple_pid_v6, &tup, &pid, BPF_ANY);
 	return 0;
 };
 
-SEC("kprobe/handle_tcp_v4_connect")
-int kprobe__handle_tcp_v4_connect(struct pt_regs *ctx)
+SEC("kprobe/handle_tcp_v6_connect")
+int kprobe__handle_tcp_v6_connect(struct pt_regs *ctx)
 {
 	u64 pid = bpf_get_current_pid_tgid();
 	struct sock *skp;
 	skp = (struct sock *) PT_REGS_PARM1(ctx);
-	bpf_map_update_elem(&tcp_v4_connectsock, &pid, &skp, BPF_ANY);
+	bpf_map_update_elem(&tcp_v6_connectsock, &pid, &skp, BPF_ANY);
 	return 0;
 }
 
