@@ -61,6 +61,15 @@ func (f *FdMap) Put(pid, fd uint32, info FdInfo) {
 	f.items[pid][fd] = info
 }
 
+func (f *FdMap) Delete(pid, fd uint32) {
+	f.Lock()
+	defer f.Unlock()
+
+	if m, ok := f.items[pid]; ok {
+		delete(m, fd)
+	}
+}
+
 type Context struct {
 	Fds *FdMap
 }
@@ -373,6 +382,7 @@ func (e CloseEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 			fileName = info.Path
 		}
 	}
+	ctx.Fds.Delete(uint32(ce.Pid), uint32(e.Fd))
 
 	return fmt.Sprintf("Fd %d<%s> ", e.Fd, fileName)
 }

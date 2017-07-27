@@ -88,6 +88,15 @@ func (f *FdMap) Put(pid, fd uint32, info FdInfo) {
 	f.items[pid][fd] = info
 }
 
+func (f *FdMap) Delete(pid, fd uint32) {
+	f.Lock()
+	defer f.Unlock()
+
+	if m, ok := f.items[pid]; ok {
+		delete(m, fd)
+	}
+}
+
 type Context struct {
 	Fds *FdMap
 }
@@ -725,6 +734,10 @@ func (e {{ .Name }}) String(ret int64, ctx Context, ce CommonEvent) string {
 		}
 	}
 		{{- end }}
+	{{- end }}
+
+	{{- if (eq $name "CloseEvent") }}
+	ctx.Fds.Delete(uint32(ce.Pid), uint32(e.Fd))
 	{{- end }}
 
 	return fmt.Sprintf("{{- range $index, $param := .Params -}}
