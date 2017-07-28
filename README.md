@@ -50,6 +50,25 @@ Running test_sys_close with PID: 8099               [PASSED]
 ...
 ```
 
+### Analyse performances
+
+slagent offers [HTTP endpoints with profiling information](https://golang.org/pkg/net/http/pprof/).
+To enable them, use `--pprof-listen-addr=localhost:9090`.
+Then, you can access one of the profiling endpoint:
+
+```bash
+go tool pprof http://localhost:9090/debug/pprof/heap
+go tool pprof http://localhost:9090/debug/pprof/profile
+```
+
+#### eBPF performances
+
+eBPF programs run in the kernel and their CPU usage are not accounted in the slagent process. This can be monitored with:
+```bash
+sudo perf top
+```
+Then, look for `__bpf_prog_run`.
+
 ## Design
 
 ### Probes
