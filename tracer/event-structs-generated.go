@@ -10,6 +10,8 @@ import (
 	"hash/fnv"
 	"net"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -368,7 +370,8 @@ func (e CloseEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
 	if ok {
 		var stat syscall.Stat_t
-		err := syscall.Stat(info.Path, &stat)
+		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
+		err := syscall.Stat(path, &stat)
 		if err != nil {
 			if err == syscall.ENOENT {
 				// the file doesn't exist anymore, it's probably "info.Path"
@@ -392,7 +395,8 @@ func (e FchmodEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
 	if ok {
 		var stat syscall.Stat_t
-		err := syscall.Stat(info.Path, &stat)
+		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
+		err := syscall.Stat(path, &stat)
 		if err != nil {
 			if err == syscall.ENOENT {
 				// the file doesn't exist anymore, it's probably "info.Path"
@@ -424,7 +428,8 @@ func (e FchownEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
 	if ok {
 		var stat syscall.Stat_t
-		err := syscall.Stat(info.Path, &stat)
+		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
+		err := syscall.Stat(path, &stat)
 		if err != nil {
 			if err == syscall.ENOENT {
 				// the file doesn't exist anymore, it's probably "info.Path"
@@ -483,7 +488,8 @@ func (e ReadEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
 	if ok {
 		var stat syscall.Stat_t
-		err := syscall.Stat(info.Path, &stat)
+		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
+		err := syscall.Stat(path, &stat)
 		if err != nil {
 			if err == syscall.ENOENT {
 				// the file doesn't exist anymore, it's probably "info.Path"
@@ -512,7 +518,8 @@ func (e WriteEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
 	if ok {
 		var stat syscall.Stat_t
-		err := syscall.Stat(info.Path, &stat)
+		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
+		err := syscall.Stat(path, &stat)
 		if err != nil {
 			if err == syscall.ENOENT {
 				// the file doesn't exist anymore, it's probably "info.Path"

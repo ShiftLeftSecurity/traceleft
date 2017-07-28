@@ -26,5 +26,10 @@ int main(int argc, const char **argv)
 	}
 
 	close(fd);
+
+	// sleep 10ms so the process doesn't die before we check
+	// /proc/$PID/root/$FILE_PATH
+	usleep(10* 1000);
+
 	return 0;
 }
