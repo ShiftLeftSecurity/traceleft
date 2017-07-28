@@ -10,6 +10,11 @@ GO_BUILD_ARGS := $(shell test "$(SHIFTLEFT_DEBUG)" -eq 1 && echo -race)
 GO_PKGS := $(shell go list ./... | grep -v /vendor)
 GO_TEST := GOOS=$(HOST_OS) GOARCH=$(HOST_ARCH) $(GO) test
 
+# If you can use docker without being root, you can do "make SUDO="
+SUDO=$(shell docker info >/dev/null 2>&1 || echo "sudo -E")
+INSIDE_CONTAINER ?= false
+DOCKER_BUILDER_IMAGE := shiftleftsecurity/builder
+DOCKER_BUILDER_FILE := builder.Dockerfile
 VENDOR_DIR := vendor
 BUILD_DIR := build
 BIN_DIR := $(BUILD_DIR)/bin
@@ -32,12 +37,37 @@ PROTO_TARGETS := $(patsubst $(PROTO_DIR)/%.proto,$(PROTO_DIR)/%.pb.go,$(PROTO_SO
 all: pregen slagent
 
 #
+# Docker builder image
+
+.PHONY: build-docker-image delete-docker-image
+build-docker-image:
+	$(SUDO) docker build -t $(DOCKER_BUILDER_IMAGE) -f $(DOCKER_BUILDER_FILE) .
+
+delete-docker-image:
+	$(SUDO) docker rmi -f $(DOCKER_BUILDER_IMAGE)
+
+#
 # Main slagent target
+
+ifeq ($(INSIDE_CONTAINER),false)
+
+$(SLAGENT_BIN): build-docker-image
+	$(SUDO) docker run --rm \
+		-v $(PWD):/go/src/github.com/ShiftLeftSecurity/traceleft \
+		-e INSIDE_CONTAINER=true \
+		--workdir=/go/src/github.com/ShiftLeftSecurity/traceleft \
+		$(DOCKER_BUILDER_IMAGE) \
+		make $@
+	sudo chown -R $(UID):$(UID) $(BIN_DIR)/$@
+
+else
 
 $(SLAGENT_BIN):
 	CGO_ENABLED=$(CGO_ENABLED) \
 	$(GO) build $(GO_BUILD_ARGS) \
 	-o $(BIN_DIR)/$@ $(SLAGENT_MAIN)
+
+endif
 
 #
 # Proto targets

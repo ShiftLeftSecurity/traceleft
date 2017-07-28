@@ -1,18 +1,14 @@
 UID=$(shell id -u)
 PWD=$(shell pwd)
 
-DOCKER_FILE?=Dockerfile
-DOCKER_IMAGE?=shiftleftsecurity/bpf-builder
+DOCKER_IMAGE?=shiftleftsecurity/builder
 
 # If you can use docker without being root, you can do "make SUDO="
 SUDO=$(shell docker info >/dev/null 2>&1 || echo "sudo -E")
 
-.PHONY: all build-docker-image build-ebpf-object delete-docker-image install-generated-go
+.PHONY: all build-ebpf-object install-generated-go
 
-all: build-docker-image build-ebpf-object install-generated-go
-
-build-docker-image:
-	$(SUDO) docker build -t $(DOCKER_IMAGE) -f $(DOCKER_FILE) .
+all: build-ebpf-object install-generated-go
 
 build-ebpf-object:
 	$(SUDO) docker run --rm \
@@ -26,5 +22,3 @@ build-ebpf-object:
 install-generated-go:
 	cp out/trace-events.go ../probe/trace-events.go
 
-delete-docker-image:
-	$(SUDO) docker rmi -f $(DOCKER_IMAGE)
