@@ -520,6 +520,18 @@ func (e ConnectV4Event) Metric() *Metric {
 	}
 }
 
+func (e ConnectV6Event) Metric() *Metric {
+	return &Metric{
+		ConnectV6Event: &ProtobufConnectV6Event{
+			Saddr: inet_ntoa6(e.Saddr),
+			Daddr: inet_ntoa6(e.Daddr),
+			Sport: uint32(e.Sport),
+			Dport: uint32(e.Dport),
+			Netns: e.Netns,
+		},
+	}
+}
+
 // network helper functions
 
 func inet_ntoa(ip uint32) string {
@@ -709,6 +721,14 @@ message ProtobufConnectV4Event {
 	uint32 Dport = 4;
 	uint32 Netns = 5;
 }
+
+message ProtobufConnectV6Event {
+	string Saddr = 1;
+	string Daddr = 2;
+	uint32 Sport = 3;
+	uint32 Dport = 4;
+	uint32 Netns = 5;
+}
 `
 
 var tmplFuncMap = template.FuncMap{
@@ -738,8 +758,9 @@ message Metric {
 	uint64 Count = 1;
 	ProtobufCommonEvent CommonEvent = 2;
 	ProtobufConnectV4Event ConnectV4Event = 3;
+	ProtobufConnectV6Event ConnectV6Event = 4;
 	{{- range $index, $syscall := . }}
-	Protobuf{{ $syscall.Name }} {{ $syscall.Name }} = {{ incn $index 4 }};
+	Protobuf{{ $syscall.Name }} {{ $syscall.Name }} = {{ incn $index 5 }};
 	{{- end }}
 }
 `
