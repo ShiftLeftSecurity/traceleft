@@ -1,0 +1,8 @@
+#!/bin/bash
+
+. tests/stampwait.sh
+
+stampwait $1
+
+timeout 1 nc -l -p 65530 &
+exec nc -p 65529 localhost 65530

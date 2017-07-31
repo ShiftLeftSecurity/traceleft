@@ -86,6 +86,11 @@ for dir in "${testdir}"/*; do
         expected_output="$(sed -e "s|%PID%|$pid|g" "${testdir}/${testname}/expect.log")"
     fi
 
+    if [[ "${testname}" =~ "test_tcp_" ]]; then
+        host_netns="$(readlink /proc/1/ns/net | cut -d "[" -f2 | cut -d "]" -f1)"
+        expected_output=${expected_output//%HOST_NETNS%/$host_netns}
+    fi
+
     if diff  --ignore-all-space <(printf "%s" "${expected_output}") "${outfile}"; then
         printf "\r%-50s  \e[32m%-10s\e[39m \n" "${status_line}" "[PASSED]"
     else
