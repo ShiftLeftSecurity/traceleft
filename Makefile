@@ -110,14 +110,14 @@ metagen:
 # BPF common trace target
 
 .PHONY: bpf
-bpf:
+bpf: build-docker-image
 	$(MAKE) -C $(BPF_DIR)
 
 #
 # BPF battery targets
 
 .PHONY: battery
-battery:
+battery: build-docker-image
 	$(MAKE) -C $(BATTERY_DIR)
 
 #
