@@ -6,6 +6,7 @@ static inline int stampwait(const char *path) {
 	if (fd < 0)
 		return 1;
 	close(fd);
+	// wait until the file is removed by run.sh
 	while (access(path, F_OK) != -1)
 		sleep(1);
 	sleep(1);
