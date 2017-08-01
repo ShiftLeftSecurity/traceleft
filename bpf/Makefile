@@ -20,5 +20,5 @@ build-ebpf-object:
 	sudo chown -R $(UID):$(UID) out
 
 install-generated-go:
-	cp out/trace-events.go ../probe/trace-events.go
+	cp out/trace-events-generated.go ../probe/trace-events-generated.go
 

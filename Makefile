@@ -126,7 +126,8 @@ battery: build-docker-image
 FIND_GO_FILES := find . -type f -name '*.go' \
 	! -path './vendor/*' \
 	! -path './.git/*' \
-	! -name '*.pb.go'
+	! -name '*.pb.go' \
+	! -name '*-generated.go'
 
 .PHONY: vet
 vet:
