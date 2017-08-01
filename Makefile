@@ -1,6 +1,6 @@
 PROTOC := protoc
 GO := go
-HAVE_PROTOC := $(shell which $(PROTOC))
+HAVE_PROTOC := $(shell which $(PROTOC) 2>/dev/null)
 CGO_ENABLED := 1
 HOST_OS := linux
 
@@ -55,10 +55,10 @@ $(SLAGENT_BIN): build-docker-image
 	$(SUDO) docker run --rm \
 		-v $(PWD):/go/src/github.com/ShiftLeftSecurity/traceleft \
 		-e INSIDE_CONTAINER=true \
+		--user $(UID):$(UID) \
 		--workdir=/go/src/github.com/ShiftLeftSecurity/traceleft \
 		$(DOCKER_BUILDER_IMAGE) \
 		make $@
-	sudo chown -R $(UID):$(UID) $(BIN_DIR)/$@
 
 else
 

@@ -1,6 +1,6 @@
 SHELL=/bin/bash -o pipefail
 DEST_DIR=/dist
-LINUX_HEADERS=$(shell dnf list kernel-devel | awk '/^kernel-devel\..*/{print "/usr/src/kernels/"$$2".x86_64"}')
+LINUX_HEADERS=$(shell cat /usr/src/kernel-package.txt)
 
 .PHONY: all
 
