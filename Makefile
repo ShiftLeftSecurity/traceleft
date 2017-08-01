@@ -1,6 +1,6 @@
 PROTOC := protoc
 GO := go
-HAVE_PROTOC := $(shell which $(PROTOC))
+HAVE_PROTOC := $(shell which $(PROTOC) 2>/dev/null)
 CGO_ENABLED := 1
 HOST_OS := linux
 
