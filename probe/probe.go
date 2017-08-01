@@ -190,7 +190,7 @@ func (probe *Probe) unregisterHandler(pid int, handlerName string) error {
 }
 
 func (probe *Probe) UnregisterHandler(pid int) error {
-	for handlerName, _ := range probe.pidToHandlers[pid] {
+	for handlerName := range probe.pidToHandlers[pid] {
 		if err := probe.unregisterHandler(pid, handlerName); err != nil {
 			return err
 		}

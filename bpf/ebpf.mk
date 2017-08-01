@@ -19,4 +19,4 @@ $(DEST_DIR)/%.bpf: %.c
 		-O2 -emit-llvm -c $< \
 		$(foreach path,$(LINUX_HEADERS), -I $(path)/arch/x86/include -I $(path)/arch/x86/include/generated -I $(path)/include -I $(path)/include/generated/uapi -I $(path)/arch/x86/include/uapi -I $(path)/include/uapi) \
 		-o - | llc -march=bpf -filetype=obj -o $@
-	go-bindata -pkg probe -prefix "${DEST_DIR}/" -modtime 1 -o "${DEST_DIR}/trace-events.go" "$@"
+	go-bindata -pkg probe -prefix "${DEST_DIR}/" -modtime 1 -o "${DEST_DIR}/trace-events-generated.go" "$@"

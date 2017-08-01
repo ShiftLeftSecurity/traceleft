@@ -10,7 +10,7 @@
 #pragma clang diagnostic pop
 #include <linux/types.h>
 #include "bpf_helpers.h"
-#include "event_structs.h"
+#include "event-structs-generated.h"
 
 #define PIN_GLOBAL_NS 2
 

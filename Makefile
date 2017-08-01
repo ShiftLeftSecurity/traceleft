@@ -34,7 +34,7 @@ PROTO_SOURCES := $(wildcard $(PROTO_DIR)/*.proto)
 PROTO_TARGETS := $(patsubst $(PROTO_DIR)/%.proto,$(PROTO_DIR)/%.pb.go,$(PROTO_SOURCES))
 
 .PHONY: all
-all: pregen slagent
+all: protogen handlers pregen slagent
 
 #
 # Docker builder image
@@ -126,7 +126,8 @@ battery: build-docker-image
 FIND_GO_FILES := find . -type f -name '*.go' \
 	! -path './vendor/*' \
 	! -path './.git/*' \
-	! -name '*.pb.go'
+	! -name '*.pb.go' \
+	! -name '*-generated.go'
 
 .PHONY: vet
 vet:
@@ -143,16 +144,13 @@ fmt:
 #
 # Misc targets
 
-HANDLER_CMD = \
-	@if [ -f $(BIN_DIR)/slagent ]; then \
-			$(BIN_DIR)/slagent gen-handler ; \
-	else \
-		echo "Build slagent first by running make" ;\
-	fi
+
+traceleft-handlers:
+	$(GO) build $(GO_BUILD_ARGS) -o $(BIN_DIR)/$@ github.com/ShiftLeftSecurity/traceleft/cli/traceleft-handlers
 
 .PHONY: handlers
-handlers:
-	$(HANDLER_CMD)
+handlers: traceleft-handlers
+	$(BIN_DIR)/traceleft-handlers gen-handler
 
 .PHONY: clean
 clean:
