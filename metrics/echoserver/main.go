@@ -121,7 +121,7 @@ func initUI(quitChan chan bool) {
 		syscallCountMutex.Unlock()
 
 		sortedSyscalls := make([]string, 0, len(currentCount))
-		for k, _ := range currentCount {
+		for k := range currentCount {
 			sortedSyscalls = append(sortedSyscalls, k)
 		}
 		sort.Strings(sortedSyscalls)
