@@ -1,0 +1,1 @@
+event connect_v6 pid %PID% return value 0 Saddr ::1 Daddr ::1 Sport 65529 Dport 65530 Netns %HOST_NETNS%

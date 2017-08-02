@@ -4,5 +4,5 @@
 
 stampwait $1
 
-timeout 1 nc -l -p 65530 &
-exec nc -p 65529 localhost 65530
+timeout 1 nc -4 -l -p 65530 &
+exec nc -4 -p 65529 localhost 65530
