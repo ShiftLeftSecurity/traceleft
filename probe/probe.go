@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha512"
 	"fmt"
+	"os"
 	"strings"
 	"unsafe"
 
@@ -234,6 +235,17 @@ func New(cacheSize int) (*Probe, error) {
 
 	if err := globalBPF.Load(nil); err != nil {
 		return nil, fmt.Errorf("error loading global BPF: %v", err)
+	}
+
+	untrackedTable := globalBPF.Map("untracked_pids")
+	if untrackedTable == nil {
+		return nil, fmt.Errorf("%q doesn't exist", "untracked_pids")
+	}
+
+	probePid := uint32(os.Getpid())
+	var zero uint8 = 0
+	if err := globalBPF.UpdateElement(untrackedTable, unsafe.Pointer(&probePid), unsafe.Pointer(&zero), 0); err != nil {
+		return nil, fmt.Errorf("error updating %q: %v", untrackedTable.Name, err)
 	}
 
 	// TODO choose something here
