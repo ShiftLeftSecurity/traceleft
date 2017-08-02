@@ -19,9 +19,12 @@ while getopts vo: opt; do
   esac
 done
 
-outfile=${outfile:-$(mktemp /tmp/traceleft-test-cli-out-XXXXXX)}
+shift $((OPTIND-1))
+
+readonly tempdir=$(mktemp -d /tmp/traceleft-test-cli-XXXXXX)
+readonly stampfile="${tempdir}/stamp"
+outfile=${outfile:-${tempdir}/outfile}
 declare -r outfile
-readonly stampfile="$(mktemp /tmp/traceleft-test-cli-stamp-XXXXXX)"
 outdir="/tmp/traceleft-trace-out"
 
 function shutdown() {
@@ -30,7 +33,7 @@ function shutdown() {
   fi
   rm -f "${outfile}"
   rm -rf "${outdir}"
-  rm -f "${stampfile}"
+  rm -rf "${tempdir}"
 }
 
 trap shutdown EXIT
@@ -51,6 +54,10 @@ for dir in "${testdir}"/*; do
         continue
     fi
 
+    if [[ -n $@ ]] && [[ ! " $@ " =~ " ${testname} " ]]; then
+        continue
+    fi
+
     "${testdir}/${testname}/${testname}" "${stampfile}" &
     pid=$!
     disown
@@ -60,6 +67,7 @@ for dir in "${testdir}"/*; do
 
     testcommands="$(sed -e "s|%PID%|$pid|g" -e "s|%BASEDIR%|${testdir}/../|g" "${testscript}")"
 
+    # wait until the file is created by the test via stampwait()
     until [[ -f "${stampfile}" ]]; do sleep 1; done
     rm -f "${stampfile}"
 
