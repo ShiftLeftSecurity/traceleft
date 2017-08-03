@@ -1,0 +1,8 @@
+#!/bin/bash
+
+. tests/stampwait.sh
+
+stampwait $1
+
+(sleep 1 && echo "helo" | nc -6 -p 65529 localhost 65530) &
+exec nc -6 -l -p 65530 >/dev/null 2>&1

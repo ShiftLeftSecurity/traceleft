@@ -1,0 +1,2 @@
+trace %PID% %BASEDIR%/battery/out/handle_network_tcp_close.bpf
+sleep 4
