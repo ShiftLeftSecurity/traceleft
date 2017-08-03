@@ -45,6 +45,8 @@ mkdir -p "$outdir"
 # Make sure tests are up to date
 make --silent -C "${testdir}"
 
+host_netns="$(readlink /proc/1/ns/net | cut -d "[" -f2 | cut -d "]" -f1)"
+
 for dir in "${testdir}"/*; do
     testname=$(basename "${dir}")
     testscript="${testdir}/${testname}/${testname}.script"
@@ -75,21 +77,10 @@ for dir in "${testdir}"/*; do
 
     kill -9 "${pid}" 2>/dev/null || true
 
-    if [[ ("${testname}" == "test_sys_open") ]] || \
-       [[ ("${testname}" == "test_sys_close") ]] || \
-       [[ ("${testname}" == "test_sys_fchmod") ]] || \
-       [[ ("${testname}" == "test_sys_fchown") ]]
-    then
-        fd=$(cat "$outdir/test_fd")
-        expected_output="$(sed -e "s|%PID%|$pid|g; s|%FD%|$fd|g" "${testdir}/${testname}/expect.log")"
-    else
-        expected_output="$(sed -e "s|%PID%|$pid|g" "${testdir}/${testname}/expect.log")"
-    fi
-
-    if [[ "${testname}" =~ "test_tcp_" ]]; then
-        host_netns="$(readlink /proc/1/ns/net | cut -d "[" -f2 | cut -d "]" -f1)"
-        expected_output=${expected_output//%HOST_NETNS%/$host_netns}
-    fi
+    fd=$(cat "$outdir/test_fd" 2>/dev/null || true)
+    expected_output="$(sed -e "s|%PID%|$pid|g" "${testdir}/${testname}/expect.log")"
+    expected_output="${expected_output//%FD%/$fd}"
+    expected_output="${expected_output//%HOST_NETNS%/$host_netns}"
 
     if diff  --ignore-all-space <(printf "%s" "${expected_output}") "${outfile}"; then
         printf "\r%-50s  \e[32m%-10s\e[39m \n" "${status_line}" "[PASSED]"
