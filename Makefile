@@ -3,6 +3,7 @@ GO := go
 HAVE_PROTOC := $(shell which $(PROTOC) 2>/dev/null)
 CGO_ENABLED := 1
 HOST_OS := linux
+UID=$(shell id -u)
 
 export SHIFTLEFT_DEBUG ?= 0
 GO_BUILD_ARGS := $(shell test "$(SHIFTLEFT_DEBUG)" -eq 1 && echo -race)
