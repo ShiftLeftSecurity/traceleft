@@ -103,8 +103,7 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 	bpf_probe_read(&oldstate, sizeof(oldstate), (u8 *)&skp->sk_state);
 	if (oldstate == TCP_SYN_SENT ||
 	    oldstate == TCP_SYN_RECV ||
-	    oldstate == TCP_NEW_SYN_RECV ||
-	    oldstate == TCP_CLOSE) {
+	    oldstate == TCP_NEW_SYN_RECV) {
 		return 0;
 	}
 
