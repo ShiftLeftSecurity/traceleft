@@ -15,4 +15,4 @@ generate:
 	$(SUDO) chown $(UID) event_structs_go event_structs_c
 	mv event_structs_go $(TRACER_DIR)/event-structs-generated.go
 	mv event_structs_c $(BATTERY_DIR)/event-structs-generated.h
-	gofmt -w $(TRACER_DIR)/event_structs-generated.go
+	gofmt -w $(TRACER_DIR)/event-structs-generated.go

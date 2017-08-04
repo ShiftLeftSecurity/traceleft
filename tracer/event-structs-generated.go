@@ -360,86 +360,83 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
 
 	case "chmod":
 		ev := ChmodEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		copy(ev.Filename[:], buf.Next(256))
+		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	case "chown":
 		ev := ChownEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		copy(ev.Filename[:], buf.Next(256))
+		ev.User = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
+		ev.Group = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
 		return ev, nil
 
 	case "close":
 		ev := CloseEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	case "fchmod":
 		ev := FchmodEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	case "fchmodat":
 		ev := FchmodatEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Dfd = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+		copy(ev.Filename[:], buf.Next(256))
+		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	case "fchown":
 		ev := FchownEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+		ev.User = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
+		ev.Group = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
 		return ev, nil
 
 	case "fchownat":
 		ev := FchownatEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Dfd = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+		copy(ev.Filename[:], buf.Next(256))
+		ev.User = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
+		ev.Group = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
+		ev.Flag = int64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	case "mkdir":
 		ev := MkdirEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		copy(ev.Pathname[:], buf.Next(256))
+		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	case "mkdirat":
 		ev := MkdiratEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Dfd = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+		copy(ev.Pathname[:], buf.Next(256))
+		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	case "open":
 		ev := OpenEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		copy(ev.Filename[:], buf.Next(256))
+		ev.Flags = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	case "read":
 		ev := ReadEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+		copy(ev.Buf[:], buf.Next(256))
+		ev.Count = int64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	case "write":
 		ev := WriteEvent{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+		copy(ev.Buf[:], buf.Next(256))
+		ev.Count = int64(binary.LittleEndian.Uint64(buf.Next(8)))
 		return ev, nil
 
 	// network events
@@ -449,9 +446,11 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
 		fallthrough
 	case "connect_v4":
 		ev := ConnectV4Event{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Saddr = binary.LittleEndian.Uint32(buf.Next(4))
+		ev.Daddr = binary.LittleEndian.Uint32(buf.Next(4))
+		ev.Sport = binary.LittleEndian.Uint16(buf.Next(2))
+		ev.Dport = binary.LittleEndian.Uint16(buf.Next(2))
+		ev.Netns = binary.LittleEndian.Uint32(buf.Next(4))
 		return ev, nil
 	case "close_v6":
 		fallthrough
@@ -459,9 +458,11 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
 		fallthrough
 	case "connect_v6":
 		ev := ConnectV6Event{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		copy(ev.Saddr[:], buf.Next(16))
+		copy(ev.Daddr[:], buf.Next(16))
+		ev.Sport = binary.LittleEndian.Uint16(buf.Next(2))
+		ev.Dport = binary.LittleEndian.Uint16(buf.Next(2))
+		ev.Netns = binary.LittleEndian.Uint32(buf.Next(4))
 		return ev, nil
 	default:
 		return DefaultEvent{}, nil
