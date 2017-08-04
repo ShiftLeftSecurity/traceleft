@@ -22,7 +22,7 @@ const headers = `
 
 `
 
-// TODO: make slice sizes fixed so we can decode it with binary.Read(),
+// TODO: make slice sizes fixed so we can decode it,
 // for now it's fine since we're not using any of these yet.
 const kernelStructs = headers + `
 package tracer
@@ -533,9 +533,15 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Printable, error) {
 const getStructTemplate = `
 	case "{{ .RawName }}":
 		ev := {{ .Name }}{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		{{- range $index, $param := .Params }}
+			{{- if eq $param.Type "[256]byte" }}
+		copy(ev.{{ $param.Name }}[:], buf.Next(256))
+			{{- else if or (eq $param.Type "uint32") (eq $param.Type "int32") }}
+		ev.{{ $param.Name }} = {{ $param.Type }}(binary.LittleEndian.Uint32(buf.Next(4)))
+			{{- else if or (eq $param.Type "uint64") (eq $param.Type "int64") }}
+		ev.{{ $param.Name }} = {{ $param.Type }}(binary.LittleEndian.Uint64(buf.Next(8)))
+			{{- end }}
+		{{- end }}
 		return ev, nil
 `
 
@@ -547,9 +553,11 @@ const getStructEpilogue = `
 		fallthrough
 	case "connect_v4":
 		ev := ConnectV4Event{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		ev.Saddr = binary.LittleEndian.Uint32(buf.Next(4))
+		ev.Daddr = binary.LittleEndian.Uint32(buf.Next(4))
+		ev.Sport = binary.LittleEndian.Uint16(buf.Next(2))
+		ev.Dport = binary.LittleEndian.Uint16(buf.Next(2))
+		ev.Netns = binary.LittleEndian.Uint32(buf.Next(4))
 		return ev, nil
 	case "close_v6":
 		fallthrough
@@ -557,9 +565,11 @@ const getStructEpilogue = `
 		fallthrough
 	case "connect_v6":
 		ev := ConnectV6Event{}
-		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
-			return nil, err
-		}
+		copy(ev.Saddr[:], buf.Next(16))
+		copy(ev.Daddr[:], buf.Next(16))
+		ev.Sport = binary.LittleEndian.Uint16(buf.Next(2))
+		ev.Dport = binary.LittleEndian.Uint16(buf.Next(2))
+		ev.Netns = binary.LittleEndian.Uint32(buf.Next(4))
 		return ev, nil
 	default:
 		return DefaultEvent{}, nil
