@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -43,15 +44,15 @@ var (
 	ctx tracer.Context
 
 	handlerCacheSize      int
-	collectorAddr         string
 	collectorWithInsecure bool
+	aggregationSpecPath   string
 )
 
 func init() {
 	traceCmd.Flags().IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
-	traceCmd.Flags().StringVar(&collectorAddr, "collector-addr", "", "addr of the collector service ('host:port' pair w/o protocol). otherwise events are logged to stdout")
 	traceCmd.Flags().BoolVar(&collectorWithInsecure, "collector-insecure", false, "disable transport security for collector connection")
 	ctx.Fds = tracer.NewFdMap()
+	traceCmd.Flags().StringVar(&aggregationSpecPath, "aggregation-spec", "", "path to the aggregation spec in json format")
 }
 
 var eventChan chan *tracer.EventData
@@ -62,11 +63,24 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 
 	eventChan = make(chan *tracer.EventData)
 
-	if collectorAddr != "" {
+	var spec metrics.AggregationSpec
+
+	if aggregationSpecPath != "" {
+		b, err := ioutil.ReadFile(aggregationSpecPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to read aggregation spec: %v\n", err)
+			os.Exit(1)
+		}
+
+		err = json.Unmarshal(b, &spec)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to unmarshal aggregation spec: %v\n", err)
+			os.Exit(1)
+		}
+
 		aggregator, err := metrics.NewAggregator(metrics.AggregatorOptions{
-			collectorAddr,
 			collectorWithInsecure,
-		}, eventChan, 5000)
+		}, eventChan, spec, ctx)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to get aggregator: %v\n", err)
 			os.Exit(1)

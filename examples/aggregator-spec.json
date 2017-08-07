@@ -1,0 +1,31 @@
+{
+    "channels": [
+        {
+            "id": "1",
+            "type": "file",
+            "path": "/tmp/traceleft.log"
+        },
+        {
+            "id": "2",
+            "type": "grpc",
+            "path": "localhost:50051"
+        }
+    ],
+    "events": [
+        {
+            "name": "open",
+            "channel": "1",
+            "stream": "filesystem",
+            "group": "system_metrics",
+            "rule": "arg1 == '/tmp/a.txt'",
+            "function": {
+                "id": "sigma",
+                "parameters": "frequency=100;threshold=0"
+            },
+            "output": {
+                "metrics": "alerts_per_sec",
+                "format": "collector_spec_pb"
+            }
+        }
+    ]
+}
