@@ -8,6 +8,7 @@
 #include "bpf_helpers.h"
 
 #include "events-map.h"
+#include "program-id-map.h"
 
 /* This is a set of PIDs (technically TGIDs) to ignore when tracking. Values
  * are ignored. It is populated by userspace. */

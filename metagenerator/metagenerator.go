@@ -553,11 +553,14 @@ type {{ .Name }} struct {
 
 const cStructTemplate = `
 typedef struct {
+	// fields matching struct CommonEvent from tracer.go
 	u64 timestamp;
+	u64 program_id;
 	int64_t pid;
 	long ret;
 	char name[64];
 	u64 hash;
+	// fields matching the struct for {{ .Name }} from event-structs-generated.go
 	{{- range $index, $param := .Params}}
 	{{ $param.Type }} {{ $param.Name }}{{ $param.Suffix }};
 	{{- end }}

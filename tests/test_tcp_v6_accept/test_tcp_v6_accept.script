@@ -1,2 +1,2 @@
-trace %PID% %BASEDIR%/battery/out/handle_network_inet_csk_accept.bpf
+trace 42 %PID% %BASEDIR%/battery/out/handle_network_inet_csk_accept.bpf
 sleep 4

@@ -43,6 +43,7 @@
 #include "handle_network_tcp.h"
 
 #include "../bpf/events-map.h"
+#include "../bpf/program-id-map.h"
 #include "network-maps.h"
 
 SEC("kretprobe/handle_tcp_set_state")
@@ -81,10 +82,13 @@ int kprobe__handle_tcp_set_state(struct pt_regs *ctx)
 		if (pid == 0) {
 			return 0;	// missed entry
 		}
+		u32 tgid = (*pid) >> 32;
+		u64 *program_id = bpf_map_lookup_elem(&program_id_per_pid, &tgid);
 
 		tcp_v4_event_t ev = {
 			.common = {
 				.timestamp = bpf_ktime_get_ns(),
+				.program_id = program_id ? *program_id : 0,
 				.tgid = (*pid) >> 32,
 				.ret = 0,
 				.name = "connect_v4",
@@ -115,10 +119,13 @@ int kprobe__handle_tcp_set_state(struct pt_regs *ctx)
 		if (pid == 0) {
 			return 0;	// missed entry
 		}
+		u32 tgid = (*pid) >> 32;
+		u64 *program_id = bpf_map_lookup_elem(&program_id_per_pid, &tgid);
 
 		tcp_v6_event_t ev = {
 			.common = {
 				.timestamp = bpf_ktime_get_ns(),
+				.program_id = program_id ? *program_id : 0,
 				.tgid = (*pid) >> 32,
 				.ret = 0,
 				.name = "connect_v6",
