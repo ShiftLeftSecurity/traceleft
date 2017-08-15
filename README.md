@@ -6,7 +6,9 @@
 
 ```bash
 make
-sudo build/bin/slagent trace $PID1,$PID2:battery/out/handle_syscall_read.bpf $PID3:battery/out/handle_syscall_chown.bpf
+sudo build/bin/slagent trace --collector-insecure --collector-addr localhost:50051 $PID1,$PID2:battery/out/handle_syscall_read.bpf $PID3:battery/out/handle_syscall_chown.bpf
+# or to see all events (busy):
+sudo build/bin/slagent trace --collector-insecure --collector-addr localhost:50051 $(find battery/out/*)
 ```
 
 The `$PID` is optional and can be skipped to load a handler as default handler.
