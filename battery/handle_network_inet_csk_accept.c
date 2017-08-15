@@ -46,18 +46,8 @@
 #include "handle_network_tcp.h"
 #pragma clang diagnostic pop
 
-// This is the event map where the outgoing perf event is stored. It will be updated
-// from the tcp_set_state call which is when we know that connection is established
-struct bpf_map_def SEC("maps/events") tcp_event =
-{
-	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(__u32),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
-};
+#include "../bpf/events-map.h"
+#include "network-maps.h"
 
 SEC("kprobe/handle_inet_csk_accept")
 int kretprobe__handle_inet_csk_accept(struct pt_regs *ctx)
@@ -109,7 +99,7 @@ int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 		bpf_probe_read(&ev.daddr, sizeof(u32), &skp->__sk_common.skc_daddr);
 
 		if (ev.saddr != 0 && ev.daddr != 0 && ev.sport != 0 && ev.dport != 0) {
-			bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
+			bpf_perf_event_output(ctx, &events, cpu, &ev, sizeof(ev));
 		}
 	} else if (check_family(skp, AF_INET6)) {
 		tcp_v6_event_t ev = {
@@ -131,7 +121,7 @@ int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 		if ((ev.saddr[0] | ev.saddr[1] | ev.saddr[2] | ev.saddr[3]) != 0 &&
 		    (ev.daddr[0] | ev.daddr[1] | ev.daddr[2] | ev.daddr[3]) != 0 &&
 		    ev.sport != 0 && ev.dport != 0) {
-			bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
+			bpf_perf_event_output(ctx, &events, cpu, &ev, sizeof(ev));
 		}
 	}
 

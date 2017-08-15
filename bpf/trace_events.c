@@ -7,28 +7,7 @@
 #pragma clang diagnostic pop
 #include "bpf_helpers.h"
 
-#define PIN_GLOBAL_NS 2
-
-/* Stores common part of all events */
-typedef struct {
-	u64 timestamp;
-	int64_t tgid;
-	long ret;
-	char name[64];
-} event_t;
-
-/* This is a key/value store with the keys being the cpu number
- * and the values being a perf file descriptor.
- */
-struct bpf_map_def SEC("maps/events") event = {
-	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(__u32),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
-};
+#include "events-map.h"
 
 /* This is a set of PIDs (technically TGIDs) to ignore when tracking. Values
  * are ignored. It is populated by userspace. */

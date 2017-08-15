@@ -1,3 +1,4 @@
+{{/* The following comment will be added in all handlers */}}
 // Generated file, do not edit.
 // Source: handler.c.tpl
 // Event name: {{ .Name }}
@@ -12,18 +13,7 @@
 #include "bpf_helpers.h"
 #include "event-structs-generated.h"
 
-#define PIN_GLOBAL_NS 2
-
-struct bpf_map_def SEC("maps/events") {{ .Name }}_event =
-{
-	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(__u32),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
-};
+#include "../bpf/events-map.h"
 
 struct bpf_map_def SEC("maps/{{ .Name }}_args") {{ .Name }}args =
 {
@@ -60,7 +50,7 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 	    {{- end }}
 	{{- end }}
 
-	bpf_perf_event_output(ctx, &{{ .Name }}_event, cpu, &evt, sizeof(evt));
+	bpf_perf_event_output(ctx, &events, cpu, &evt, sizeof(evt));
 	return 0;
 };
 

@@ -1,8 +1,6 @@
 #ifndef HANDLER_NETWORK_TCP_H
 #define HANDLER_NETWORK_TCP_H
 
-#define PIN_GLOBAL_NS 2
-
 typedef struct {
 	u64 timestamp;
 	int64_t pid;

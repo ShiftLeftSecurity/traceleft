@@ -42,44 +42,8 @@
 #include <net/net_namespace.h>
 #include "handle_network_tcp.h"
 
-// This is the event map where the outgoing perf event is stored. It will be updated
-// from the tcp_set_state call which is when we know that connection is established
-struct bpf_map_def SEC("maps/events") tcp_event =
-{
-	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(__u32),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
-};
-
-// This stores the PID for a given tuple which will be updated during tcp_v4_connect
-// call and looked up during tcp_set_state to get the corresponding PID
-struct bpf_map_def SEC("maps/tuple_pid_v4") tuple_pid_v4 =
-{
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(tuple_v4_t),
-	.value_size = sizeof(__u64),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
-};
-
-// This stores the PID for a given tuple which will be updated during tcp_v6_connect
-// call and looked up during tcp_set_state to get the corresponding PID
-struct bpf_map_def SEC("maps/tuple_pid_v6") tuple_pid_v6 =
-{
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(tuple_v6_t),
-	.value_size = sizeof(__u64),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
-};
+#include "../bpf/events-map.h"
+#include "network-maps.h"
 
 SEC("kretprobe/handle_tcp_close")
 int kretprobe__handle_tcp_close(struct pt_regs *ctx)
@@ -126,7 +90,7 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 			.netns = tup.netns,
 		};
 
-		bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
+		bpf_perf_event_output(ctx, &events, cpu, &ev, sizeof(ev));
 		bpf_map_delete_elem(&tuple_pid_v4, &tup);
 	} else if (check_family(skp, AF_INET6)) {
 		tuple_v6_t tup = { };
@@ -147,7 +111,7 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 			.netns = tup.netns,
 		};
 
-		bpf_perf_event_output(ctx, &tcp_event, cpu, &ev, sizeof(ev));
+		bpf_perf_event_output(ctx, &events, cpu, &ev, sizeof(ev));
 		bpf_map_delete_elem(&tuple_pid_v6, &tup);
 	}
 
