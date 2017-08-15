@@ -14,9 +14,9 @@ build-ebpf-object:
 	mkdir -p $(PWD)/out
 	$(SUDO) docker run --rm \
 		--user $(UID):$(UID) \
-		-v $(PWD):/src:ro \
+		-v $(PWD)/..:/src:ro \
 		-v $(PWD)/out:/dist/ \
-		--workdir=/src \
+		--workdir=/src/battery \
 		$(DOCKER_IMAGE) \
 		make -f ebpf.mk
 

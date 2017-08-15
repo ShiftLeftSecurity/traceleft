@@ -46,6 +46,8 @@
 #include "handle_network_tcp.h"
 #pragma clang diagnostic pop
 
+#include "network-maps.h"
+
 // This stores the sock * to match kprobe and kretprobe for tcp_v6_connect call
 struct bpf_map_def SEC("maps/tcp_v6_connectsock") tcp_v6_connectsock =
 {
@@ -53,19 +55,6 @@ struct bpf_map_def SEC("maps/tcp_v6_connectsock") tcp_v6_connectsock =
 	.key_size = sizeof(__u64),
 	.value_size = sizeof(void *),
 	.max_entries = 1024,
-};
-
-// This stores the PID for a given tuple which will be updated during tcp_v4_connect
-// call and looked up during tcp_set_state to get the corresponding PID
-struct bpf_map_def SEC("maps/tuple_pid_v6") tuple_pid_v6 =
-{
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(tuple_v6_t),
-	.value_size = sizeof(__u64),
-	.max_entries = 1024,
-	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
 };
 
 SEC("kretprobe/handle_tcp_v6_connect")

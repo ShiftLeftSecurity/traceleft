@@ -10,6 +10,9 @@ import (
 
 	"github.com/ShiftLeftSecurity/traceleft/probe"
 )
+
+// #include <inttypes.h>
+// #include "../bpf/events-struct.h"
 import "C"
 
 // this has to match the struct in trace_syscalls.c and handlers.
@@ -21,8 +24,8 @@ type CommonEvent struct {
 }
 
 func CommonEventFromBuffer(buf *bytes.Buffer) (*CommonEvent, error) {
-	if buf.Len() < 88 { // sizeof(event_t) = 88. See bpf/trace_events.c.
-		return nil, fmt.Errorf("expected buf.Len() >= 88, but go %d", buf.Len())
+	if buf.Len() < C.sizeof_event_t {
+		return nil, fmt.Errorf("expected buf.Len() >= %d, but got %d", C.sizeof_event_t, buf.Len())
 	}
 	e := &CommonEvent{}
 	e.Timestamp = binary.LittleEndian.Uint64(buf.Next(8))
