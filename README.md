@@ -6,12 +6,17 @@
 
 ```bash
 make
-sudo build/bin/slagent trace --collector-insecure --collector-addr localhost:50051 $PID1,$PID2:battery/out/handle_syscall_read.bpf $PID3:battery/out/handle_syscall_chown.bpf
-# or to see all events (busy):
-sudo build/bin/slagent trace --collector-insecure --collector-addr localhost:50051 $(find battery/out/*)
+sudo build/bin/slagent trace $PID1,$PID2:battery/out/handle_syscall_read.bpf $PID3:battery/out/handle_syscall_chown.bpf
 ```
 
 The `$PID` is optional and can be skipped to load a handler as default handler.
+
+To send events to the demo server (`metrics/echoserver`) instead of logging to
+stdout, use `--collector-insecure --collector-addr localhost:50051 `:
+
+```
+sudo build/bin/slagent trace --collector-insecure --collector-addr localhost:50051 $(find battery/out/*)
+```
 
 In a second terminal, run the echoserver to see an event counter:
 

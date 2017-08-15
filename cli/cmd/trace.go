@@ -45,7 +45,7 @@ var (
 
 func init() {
 	traceCmd.Flags().IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
-	traceCmd.Flags().StringVar(&collectorAddr, "collector-addr", "localhost:50051", "addr of the collector service ('host:port' pair w/o protocol)")
+	traceCmd.Flags().StringVar(&collectorAddr, "collector-addr", "", "addr of the collector service ('host:port' pair w/o protocol). otherwise events are logged to stdout")
 	traceCmd.Flags().BoolVar(&collectorWithInsecure, "collector-insecure", false, "disable transport security for collector connection")
 }
 
@@ -57,13 +57,23 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 
 	eventChan = make(chan *tracer.EventData)
 
-	aggregator, err := metrics.NewAggregator(metrics.AggregatorOptions{
-		collectorAddr,
-		collectorWithInsecure,
-	}, eventChan, 5000)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get aggregator: %v\n", err)
-		os.Exit(1)
+	if collectorAddr != "" {
+		aggregator, err := metrics.NewAggregator(metrics.AggregatorOptions{
+			collectorAddr,
+			collectorWithInsecure,
+		}, eventChan, 5000)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get aggregator: %v\n", err)
+			os.Exit(1)
+		}
+		defer aggregator.Stop()
+	} else {
+		go func() {
+			for event := range eventChan {
+				fmt.Printf("name %s pid %d return value %d %s\n",
+					event.Common.Name, event.Common.Pid, event.Common.Ret, event.Event.String(event.Common.Ret))
+			}
+		}()
 	}
 
 	tracer, err := tracer.New(handleEvent, handlerCacheSize)
@@ -92,7 +102,6 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 
 	<-sig
 	tracer.Stop()
-	aggregator.Stop()
 }
 
 func init() {
