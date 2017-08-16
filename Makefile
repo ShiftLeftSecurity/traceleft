@@ -34,6 +34,9 @@ CONFIG_FILE := $(realpath config.json)
 PROTO_SOURCES := $(wildcard $(PROTO_DIR)/*.proto)
 PROTO_TARGETS := $(patsubst $(PROTO_DIR)/%.proto,$(PROTO_DIR)/%.pb.go,$(PROTO_SOURCES))
 
+METRICS_DIR := metrics
+METRICS_TARGETS := $(patsubst $(METRICS_DIR)/%.proto,$(METRICS_DIR)/%.pb.go,$(wildcard $(METRICS_DIR)/*.proto))
+
 .PHONY: all
 all: protogen handlers pregen slagent
 
@@ -85,6 +88,13 @@ protogen: $(PROTO_TARGETS)
 
 $(PROTO_DIR)/%.pb.go: $(PROTO_DIR)/%.proto
 	$(PROTOC_CMD)
+
+.PHONY: metrics
+
+metrics: $(METRICS_TARGETS)
+
+$(METRICS_DIR)/%.pb.go: $(METRICS_DIR)/%.proto
+	protoc -I $(METRICS_DIR) --go_out=plugins=grpc:metrics $<
 
 .PHONY: pretest
 pretest: vet lint fmt

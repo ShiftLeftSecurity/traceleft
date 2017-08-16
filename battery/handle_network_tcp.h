@@ -6,6 +6,7 @@ typedef struct {
 	int64_t pid;
 	long ret;
 	char name[64];
+	u64 hash;
 	u32 saddr;
 	u32 daddr;
 	u16 sport;

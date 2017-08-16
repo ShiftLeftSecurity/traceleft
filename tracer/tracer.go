@@ -21,6 +21,7 @@ type CommonEvent struct {
 	Pid       int64
 	Ret       int64
 	Name      string
+	Hash      uint64
 }
 
 func CommonEventFromBuffer(buf *bytes.Buffer) (*CommonEvent, error) {
@@ -34,13 +35,29 @@ func CommonEventFromBuffer(buf *bytes.Buffer) (*CommonEvent, error) {
 	nameBytes := buf.Next(64)
 	nameCstr := (*C.char)(unsafe.Pointer(&nameBytes[0]))
 	e.Name = C.GoString(nameCstr)
+	e.Hash = binary.LittleEndian.Uint64(buf.Next(8))
 	return e, nil
+}
+
+type EventData struct {
+	Common CommonEvent
+	Event  Event
 }
 
 type Tracer struct {
 	Probe    *probe.Probe
 	perfMap  *elflib.PerfMap
 	stopChan chan struct{}
+}
+
+func (e *CommonEvent) Proto() *ProtobufCommonEvent {
+	return &ProtobufCommonEvent{
+		Timestamp: e.Timestamp,
+		Pid:       e.Pid,
+		Ret:       e.Ret,
+		Name:      e.Name,
+		Hash:      e.Hash,
+	}
 }
 
 func timestamp(data *[]byte) uint64 {

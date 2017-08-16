@@ -11,6 +11,19 @@ sudo build/bin/slagent trace $PID1,$PID2:battery/out/handle_syscall_read.bpf $PI
 
 The `$PID` is optional and can be skipped to load a handler as default handler.
 
+To send events to the demo server (`metrics/echoserver`) instead of logging to
+stdout, use `--collector-insecure --collector-addr localhost:50051 `:
+
+```
+sudo build/bin/slagent trace --collector-insecure --collector-addr localhost:50051 $(find battery/out/*)
+```
+
+In a second terminal, run the echoserver to see an event counter:
+
+```
+go run metrics/echoserver/main.go
+```
+
 ### Update Protocol Buffer golang source files
 
 The source files whith Protocol Buffer definitions are checked in to the

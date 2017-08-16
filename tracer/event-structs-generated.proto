@@ -1,0 +1,125 @@
+
+// Generated file, do not edit.
+// Source: metagenerator.go
+
+
+syntax = "proto3";
+package tracer;
+
+message ProtobufCommonEvent {
+	uint64 Timestamp = 1;
+	int64 Pid = 2;
+	int64 Ret = 3;
+	string Name = 4;
+	uint64 Hash = 5;
+}
+
+message ProtobufConnectV4Event {
+	uint32 Saddr = 1;
+	uint32 Daddr = 2;
+	uint32 Sport = 3;
+	uint32 Dport = 4;
+	uint32 Netns = 5;
+}
+
+message ProtobufConnectV6Event {
+	string Saddr = 1;
+	string Daddr = 2;
+	uint32 Sport = 3;
+	uint32 Dport = 4;
+	uint32 Netns = 5;
+}
+
+message ProtobufChmodEvent {
+	bytes filename = 1;
+	uint64 mode = 2;
+}
+
+message ProtobufChownEvent {
+	bytes filename = 1;
+	uint32 user = 2;
+	uint32 group = 3;
+}
+
+message ProtobufCloseEvent {
+	uint64 fd = 1;
+}
+
+message ProtobufFchmodEvent {
+	uint64 fd = 1;
+	uint64 mode = 2;
+}
+
+message ProtobufFchmodatEvent {
+	int64 dfd = 1;
+	bytes filename = 2;
+	uint64 mode = 3;
+}
+
+message ProtobufFchownEvent {
+	uint64 fd = 1;
+	uint32 user = 2;
+	uint32 group = 3;
+}
+
+message ProtobufFchownatEvent {
+	int64 dfd = 1;
+	bytes filename = 2;
+	uint32 user = 3;
+	uint32 group = 4;
+	int64 flag = 5;
+}
+
+message ProtobufMkdirEvent {
+	bytes pathname = 1;
+	uint64 mode = 2;
+}
+
+message ProtobufMkdiratEvent {
+	int64 dfd = 1;
+	bytes pathname = 2;
+	uint64 mode = 3;
+}
+
+message ProtobufOpenEvent {
+	bytes filename = 1;
+	int64 flags = 2;
+	uint64 mode = 3;
+}
+
+message ProtobufReadEvent {
+	uint64 fd = 1;
+	bytes buf = 2;
+	int64 count = 3;
+}
+
+message ProtobufWriteEvent {
+	uint64 fd = 1;
+	bytes buf = 2;
+	int64 count = 3;
+}
+
+service MetricCollector {
+	rpc Process (stream Metric) returns (Empty) {}
+}
+
+message Empty {}
+
+message Metric {
+	uint64 Count = 1;
+	ProtobufCommonEvent CommonEvent = 2;
+	ProtobufConnectV4Event ConnectV4Event = 3;
+	ProtobufConnectV6Event ConnectV6Event = 4;
+	ProtobufChmodEvent ChmodEvent = 5;
+	ProtobufChownEvent ChownEvent = 6;
+	ProtobufCloseEvent CloseEvent = 7;
+	ProtobufFchmodEvent FchmodEvent = 8;
+	ProtobufFchmodatEvent FchmodatEvent = 9;
+	ProtobufFchownEvent FchownEvent = 10;
+	ProtobufFchownatEvent FchownatEvent = 11;
+	ProtobufMkdirEvent MkdirEvent = 12;
+	ProtobufMkdiratEvent MkdiratEvent = 13;
+	ProtobufOpenEvent OpenEvent = 14;
+	ProtobufReadEvent ReadEvent = 15;
+	ProtobufWriteEvent WriteEvent = 16;
+}

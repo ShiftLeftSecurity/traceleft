@@ -11,8 +11,10 @@ all: generate
 
 generate:
 	test -d "$(TRACER_DIR)" && test -d "$(BATTERY_DIR)"
-	$(SUDO) go run cli/main.go event_structs_go event_structs_c
-	$(SUDO) chown $(UID) event_structs_go event_structs_c
+	$(SUDO) go run cli/main.go event_structs_go event_structs.proto event_structs_c
+	$(SUDO) chown $(UID) event_structs_go event_structs.proto event_structs_c
 	mv event_structs_go $(TRACER_DIR)/event-structs-generated.go
+	mv event_structs.proto $(TRACER_DIR)/event-structs-generated.proto
 	mv event_structs_c $(BATTERY_DIR)/event-structs-generated.h
-	gofmt -w $(TRACER_DIR)/event-structs-generated.go
+	protoc -I $(TRACER_DIR)/ --go_out=plugins=grpc:$(TRACER_DIR) $(TRACER_DIR)/event-structs-generated.proto
+	gofmt -w $(TRACER_DIR)/event-structs-generated.go $(TRACER_DIR)/event-structs-generated.pb.go
