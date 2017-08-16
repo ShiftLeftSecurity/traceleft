@@ -14,6 +14,7 @@
 #include "event-structs-generated.h"
 
 #include "../bpf/events-map.h"
+#include "../bpf/program-id-map.h"
 
 struct bpf_map_def SEC("maps/{{ .Name }}_args") {{ .Name }}args =
 {
@@ -29,6 +30,7 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 	struct pt_regs *args;
 	u64 pid = bpf_get_current_pid_tgid();
 	u32 cpu = bpf_get_smp_processor_id();
+	u64 *program_id = bpf_map_lookup_elem(&program_id_per_pid, &pid);
 
 	args = bpf_map_lookup_elem(&{{ .Name }}args, &pid);
 	if (args == NULL) {
@@ -38,6 +40,7 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 
 	{{ .Name }}_event_t evt = {
 		.timestamp = bpf_ktime_get_ns(),
+		.program_id = program_id ? *program_id : 0,
 		.name = "{{ .Name }}",
 		.pid = pid >> 32,
 		.ret = PT_REGS_RC(ctx),

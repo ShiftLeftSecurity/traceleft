@@ -47,6 +47,7 @@
 #pragma clang diagnostic pop
 
 #include "../bpf/events-map.h"
+#include "../bpf/program-id-map.h"
 #include "network-maps.h"
 
 SEC("kprobe/handle_inet_csk_accept")
@@ -84,10 +85,13 @@ int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 	net_ns_inum = 0;
 #endif
 
+	u64 *program_id = bpf_map_lookup_elem(&program_id_per_pid, &pid);
+
 	if (check_family(skp, AF_INET)) {
 		tcp_v4_event_t ev = {
 			.common = {
 				.timestamp = bpf_ktime_get_ns(),
+				.program_id = program_id ? *program_id : 0,
 				.tgid = pid >> 32,
 				.ret = 0,
 				.name = "accept_v4",
@@ -108,6 +112,7 @@ int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 		tcp_v6_event_t ev = {
 			.common = {
 				.timestamp = bpf_ktime_get_ns(),
+				.program_id = program_id ? *program_id : 0,
 				.tgid = pid >> 32,
 				.ret = 0,
 				.name = "accept_v6",

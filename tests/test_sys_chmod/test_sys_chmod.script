@@ -1,2 +1,2 @@
-trace %PID% %BASEDIR%/battery/out/handle_syscall_chmod.bpf
+trace 42 %PID% %BASEDIR%/battery/out/handle_syscall_chmod.bpf
 sleep 2

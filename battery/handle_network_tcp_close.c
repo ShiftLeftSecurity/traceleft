@@ -43,6 +43,7 @@
 #include "handle_network_tcp.h"
 
 #include "../bpf/events-map.h"
+#include "../bpf/program-id-map.h"
 #include "network-maps.h"
 
 SEC("kretprobe/handle_tcp_close")
@@ -71,6 +72,8 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 		return 0;
 	}
 
+	u64 *program_id = bpf_map_lookup_elem(&program_id_per_pid, &pid);
+
 	if (check_family(skp, AF_INET)) {
 		tuple_v4_t tup = { };
 		if (!read_tuple_v4(&tup, skp)) {
@@ -81,6 +84,7 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 		tcp_v4_event_t ev = {
 			.common = {
 				.timestamp = bpf_ktime_get_ns(),
+				.program_id = program_id ? *program_id : 0,
 				.tgid = pid >> 32,
 				.ret = 0,
 				.name = "close_v4",
@@ -105,6 +109,7 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 		tcp_v6_event_t ev = {
 			.common = {
 				.timestamp = bpf_ktime_get_ns(),
+				.program_id = program_id ? *program_id : 0,
 				.tgid = pid >> 32,
 				.ret = 0,
 				.name = "close_v6",

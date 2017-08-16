@@ -1,2 +1,2 @@
-trace %PID% %BASEDIR%/battery/out/handle_syscall_chown.bpf
+trace 42 %PID% %BASEDIR%/battery/out/handle_syscall_chown.bpf
 sleep 2

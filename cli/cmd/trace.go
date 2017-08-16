@@ -21,13 +21,14 @@ import (
 import "C"
 
 type Event struct {
-	Pids    []int
-	ELFPath string
+	ProgramID uint64
+	Pids      []int
+	ELFPath   string
 }
 
 var (
 	traceCmd = &cobra.Command{
-		Use:   "trace [<pid>:]<path elf object> ...",
+		Use:   "trace [[program_id:]<pid>:]<path elf object> ...",
 		Short: "Trace processes",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
@@ -70,8 +71,8 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 	} else {
 		go func() {
 			for event := range eventChan {
-				fmt.Printf("name %s pid %d return value %d %s\n",
-					event.Common.Name, event.Common.Pid, event.Common.Ret, event.Event.String(event.Common.Ret))
+				fmt.Printf("name %s pid %d program id %d return value %d %s\n",
+					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, event.Event.String(event.Common.Ret))
 			}
 		}()
 	}
@@ -134,7 +135,7 @@ func registerEvents(p *probe.Probe, events []Event) error {
 		}
 
 		for _, pid := range event.Pids {
-			if err := p.RegisterHandler(pid, elfBPFBytes); err != nil {
+			if err := p.RegisterHandler(event.ProgramID, pid, elfBPFBytes); err != nil {
 				return fmt.Errorf("error registering handler: %v", err)
 			}
 		}
@@ -147,34 +148,44 @@ func parseEventMap(eventMaps []string) ([]Event, error) {
 	var events []Event
 	for _, eventMap := range eventMaps {
 		evParts := strings.Split(eventMap, ":")
-		if len(evParts) > 2 {
+		if len(evParts) > 3 {
 			return nil, fmt.Errorf("malformed event-map %q", eventMap)
 		}
-		if len(evParts) == 1 {
-			ebpfFile := evParts[0]
-			event := Event{
-				Pids:    []int{0},
-				ELFPath: ebpfFile,
-			}
-			events = append(events, event)
-			continue
-		}
-		pidsStr := evParts[0]
-		pidParts := strings.Split(pidsStr, ",")
-		var pids []int
-		for _, pidStr := range pidParts {
-			pid, err := strconv.Atoi(pidStr)
+
+		// parse program_id
+		var programID uint64 = 0
+		if len(evParts) > 2 {
+			var err error
+			programIDStr := evParts[len(evParts)-3]
+			programID, err = strconv.ParseUint(programIDStr, 0, 64)
 			if err != nil {
-				return nil, fmt.Errorf("malformed pid %q in event-map", pidStr)
+				return nil, fmt.Errorf("malformed program id %q in event-map", programIDStr)
 			}
-			pids = append(pids, pid)
 		}
 
-		ebpfFile := evParts[1]
+		// parse pids
+		var pids []int
+		if len(evParts) > 1 {
+			pidsStr := evParts[len(evParts)-2]
+			pidParts := strings.Split(pidsStr, ",")
+			for _, pidStr := range pidParts {
+				pid, err := strconv.Atoi(pidStr)
+				if err != nil {
+					return nil, fmt.Errorf("malformed pid %q in event-map", pidStr)
+				}
+				pids = append(pids, pid)
+			}
+		} else {
+			pids = []int{0}
+		}
+
+		// parse ebpf file
+		ebpfFile := evParts[len(evParts)-1]
 
 		event := Event{
-			Pids:    pids,
-			ELFPath: ebpfFile,
+			ProgramID: programID,
+			Pids:      pids,
+			ELFPath:   ebpfFile,
 		}
 		events = append(events, event)
 	}

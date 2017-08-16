@@ -15,9 +15,10 @@ import (
 // #include "../bpf/events-struct.h"
 import "C"
 
-// this has to match the struct in trace_syscalls.c and handlers.
+// this has to match the struct in cStructTemplate defined by metagenerator.go
 type CommonEvent struct {
 	Timestamp uint64
+	ProgramID uint64
 	Pid       int64
 	Ret       int64
 	Name      string
@@ -30,6 +31,7 @@ func CommonEventFromBuffer(buf *bytes.Buffer) (*CommonEvent, error) {
 	}
 	e := &CommonEvent{}
 	e.Timestamp = binary.LittleEndian.Uint64(buf.Next(8))
+	e.ProgramID = binary.LittleEndian.Uint64(buf.Next(8))
 	e.Pid = int64(binary.LittleEndian.Uint64(buf.Next(8)))
 	e.Ret = int64(binary.LittleEndian.Uint64(buf.Next(8)))
 	nameBytes := buf.Next(64)

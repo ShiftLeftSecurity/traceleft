@@ -94,7 +94,7 @@ func generateProgArrayNames(name string) (progArrayName string, progArrayNameRet
 	return
 }
 
-func (probe *Probe) registerHandler(pid int, handler *Handler) error {
+func (probe *Probe) registerHandler(programID uint64, pid int, handler *Handler) error {
 	progArrayName, progArrayNameRet := generateProgArrayNames(handler.name)
 
 	progTable := probe.module.Map(progArrayName)
@@ -114,6 +114,14 @@ func (probe *Probe) registerHandler(pid int, handler *Handler) error {
 		return fmt.Errorf("error updating %q: %v", progTableRet.Name, err)
 	}
 
+	progIDTable := probe.module.Map("program_id_per_pid")
+	if progIDTable == nil {
+		return fmt.Errorf("program_id_per_pid doesn't exist")
+	}
+	if err := probe.module.UpdateElement(progIDTable, unsafe.Pointer(&pid), unsafe.Pointer(&programID), 0); err != nil {
+		return fmt.Errorf("error updating the program id table: %v", err)
+	}
+
 	if _, ok := probe.pidToHandlers[pid]; !ok {
 		probe.pidToHandlers[pid] = make(map[string]struct{})
 	}
@@ -123,7 +131,7 @@ func (probe *Probe) registerHandler(pid int, handler *Handler) error {
 	return nil
 }
 
-func (probe *Probe) RegisterHandlerById(pid int, hash string) error {
+func (probe *Probe) RegisterHandlerById(programID uint64, pid int, hash string) error {
 	val, ok := probe.handlerCache.Get(hash)
 	if !ok {
 		return ErrNotInCache
@@ -134,7 +142,7 @@ func (probe *Probe) RegisterHandlerById(pid int, hash string) error {
 		return fmt.Errorf("invalid type")
 	}
 
-	return probe.registerHandler(pid, handler)
+	return probe.registerHandler(programID, pid, handler)
 }
 
 func (probe *Probe) getHandler(elfBPF []byte) (handler *Handler, err error) {
@@ -159,16 +167,16 @@ func (probe *Probe) getHandler(elfBPF []byte) (handler *Handler, err error) {
 	return
 }
 
-func (probe *Probe) RegisterHandler(pid int, elfBPF []byte) error {
+func (probe *Probe) RegisterHandler(programID uint64, pid int, elfBPF []byte) error {
 	handler, err := probe.getHandler(elfBPF)
 	if err != nil {
 		return err
 	}
 
-	return probe.registerHandler(pid, handler)
+	return probe.registerHandler(programID, pid, handler)
 }
 
-func (probe *Probe) unregisterHandler(pid int, handlerName string) error {
+func (probe *Probe) unregisterHandler(programID uint64, pid int, handlerName string) error {
 	progArrayName, progArrayNameRet := generateProgArrayNames(handlerName)
 	progTable := probe.module.Map(progArrayName)
 	if progTable == nil {
@@ -178,6 +186,10 @@ func (probe *Probe) unregisterHandler(pid int, handlerName string) error {
 	if progTableRet == nil {
 		return fmt.Errorf("%q doesn't exist", progArrayNameRet)
 	}
+	progIDTable := probe.module.Map("program_id_per_pid")
+	if progIDTable == nil {
+		return fmt.Errorf("program_id_per_pid doesn't exist")
+	}
 
 	if err := probe.module.DeleteElement(progTable, unsafe.Pointer(&pid)); err != nil {
 		return fmt.Errorf("error deleting %q: %v", progTable.Name, err)
@@ -185,14 +197,17 @@ func (probe *Probe) unregisterHandler(pid int, handlerName string) error {
 	if err := probe.module.DeleteElement(progTableRet, unsafe.Pointer(&pid)); err != nil {
 		return fmt.Errorf("error deleting %q: %v", progTableRet.Name, err)
 	}
+	if err := probe.module.DeleteElement(progIDTable, unsafe.Pointer(&pid)); err != nil {
+		return fmt.Errorf("error deleting program id table: %v", err)
+	}
 	delete(probe.pidToHandlers, pid)
 
 	return nil
 }
 
-func (probe *Probe) UnregisterHandler(pid int) error {
+func (probe *Probe) UnregisterHandler(programID uint64, pid int) error {
 	for handlerName := range probe.pidToHandlers[pid] {
-		if err := probe.unregisterHandler(pid, handlerName); err != nil {
+		if err := probe.unregisterHandler(programID, pid, handlerName); err != nil {
 			return err
 		}
 	}

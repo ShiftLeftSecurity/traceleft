@@ -6,6 +6,7 @@
  */
 typedef struct {
 	uint64_t timestamp;
+	uint64_t program_id;
 	int64_t  tgid;
 	int64_t  ret;
 	char     name[64];

@@ -24,8 +24,8 @@ var (
 	historyFn = filepath.Join(os.TempDir(), ".liner_example_history")
 
 	commandsUsage = map[string]string{
-		"trace": "trace <pid>[,<pid>...] <path elf object>",
-		"stop":  "stop <pid>[,<pid>...]",
+		"trace": "trace <program_id> <pid>[,<pid>...] <path elf object>",
+		"stop":  "stop <program_id> <pid>[,<pid>...]",
 		"sleep": "sleep <sec>",
 		"help":  "help [<cmd>]",
 	}
@@ -58,20 +58,24 @@ func parsePids(pidsStr string) ([]int, error) {
 }
 
 func cmdTrace(args []string, p *probe.Probe) error {
-	if len(args) != 2 {
+	if len(args) != 3 {
 		return fmt.Errorf("invalid args (usage: %s): %v", commandsUsage["trace"], args)
 	}
-	pids, err := parsePids(args[0])
+	programID, err := strconv.ParseUint(args[0], 0, 64)
+	if err != nil {
+		return fmt.Errorf("malformed program id %q", args[0])
+	}
+	pids, err := parsePids(args[1])
 	if err != nil {
 		return err
 	}
-	eBPFFile := args[1]
+	eBPFFile := args[2]
 	elfBPFBytes, err := ioutil.ReadFile(eBPFFile)
 	if err != nil {
 		return fmt.Errorf("error reading %q: %v", eBPFFile, err)
 	}
 	for _, pid := range pids {
-		if err := p.RegisterHandler(pid, elfBPFBytes); err != nil {
+		if err := p.RegisterHandler(programID, pid, elfBPFBytes); err != nil {
 			return fmt.Errorf("error registering handler: %v", err)
 		}
 	}
@@ -79,15 +83,19 @@ func cmdTrace(args []string, p *probe.Probe) error {
 }
 
 func cmdStop(args []string, p *probe.Probe) error {
-	if len(args) != 1 {
+	if len(args) != 2 {
 		return fmt.Errorf("invalid args (usage: %s): %v", commandsUsage["stop"], args)
 	}
-	pids, err := parsePids(args[0])
+	programID, err := strconv.ParseUint(args[0], 0, 64)
+	if err != nil {
+		return fmt.Errorf("malformed program id %q", args[0])
+	}
+	pids, err := parsePids(args[1])
 	if err != nil {
 		return err
 	}
 	for _, pid := range pids {
-		if err := p.UnregisterHandler(pid); err != nil {
+		if err := p.UnregisterHandler(programID, pid); err != nil {
 			return fmt.Errorf("error unregistering handler: %v", err)
 		}
 	}
