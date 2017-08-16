@@ -21,6 +21,9 @@ const headers = `
 // Source: metagenerator.go
 
 `
+const headersC = `
+#include "../bpf/events-struct.h"
+`
 
 // TODO: make slice sizes fixed so we can decode it,
 // for now it's fine since we're not using any of these yet.
@@ -554,12 +557,8 @@ type {{ .Name }} struct {
 const cStructTemplate = `
 typedef struct {
 	// fields matching struct CommonEvent from tracer.go
-	u64 timestamp;
-	u64 program_id;
-	int64_t pid;
-	long ret;
-	char name[64];
-	u64 hash;
+	common_event_t common;
+
 	// fields matching the struct for {{ .Name }} from event-structs-generated.go
 	{{- range $index, $param := .Params}}
 	{{ $param.Type }} {{ $param.Name }}{{ $param.Suffix }};
@@ -1053,7 +1052,7 @@ func GenerateGoStructs(goSyscalls []Syscall) (string, error) {
 func GenerateCStructs(cSyscalls []Syscall) (string, error) {
 	buf := new(bytes.Buffer)
 
-	if _, err := buf.WriteString(headers); err != nil {
+	if _, err := buf.WriteString(headers + headersC); err != nil {
 		return "", fmt.Errorf("error writing to buffer: %v", err)
 	}
 
