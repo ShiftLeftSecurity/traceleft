@@ -1,12 +1,10 @@
 #ifndef HANDLER_NETWORK_TCP_H
 #define HANDLER_NETWORK_TCP_H
 
+#include "../bpf/events-struct.h"
+
 typedef struct {
-	u64 timestamp;
-	int64_t pid;
-	long ret;
-	char name[64];
-	u64 hash;
+	common_event_t common;
 	u32 saddr;
 	u32 daddr;
 	u16 sport;
@@ -15,10 +13,7 @@ typedef struct {
 } tcp_v4_event_t;
 
 typedef struct {
-	u64 timestamp;
-	int64_t pid;
-	long ret;
-	char name[64];
+	common_event_t common;
 	u32 saddr[4];
 	u32 daddr[4];
 	u16 sport;

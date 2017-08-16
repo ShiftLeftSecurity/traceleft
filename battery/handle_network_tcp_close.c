@@ -79,10 +79,13 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 		}
 
 		tcp_v4_event_t ev = {
-			.timestamp = bpf_ktime_get_ns(),
-			.pid = pid >> 32,
-			.ret = 0,
-			.name = "close_v4",
+			.common = {
+				.timestamp = bpf_ktime_get_ns(),
+				.tgid = pid >> 32,
+				.ret = 0,
+				.name = "close_v4",
+				.hash = 0,
+			},
 			.saddr = tup.saddr,
 			.daddr = tup.daddr,
 			.sport = ntohs(tup.sport),
@@ -100,10 +103,13 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 		}
 
 		tcp_v6_event_t ev = {
-			.timestamp = bpf_ktime_get_ns(),
-			.pid = pid >> 32,
-			.ret = 0,
-			.name = "close_v6",
+			.common = {
+				.timestamp = bpf_ktime_get_ns(),
+				.tgid = pid >> 32,
+				.ret = 0,
+				.name = "close_v6",
+				.hash = 0,
+			},
 			.saddr = {tup.saddr[0], tup.saddr[1], tup.saddr[2], tup.saddr[3]},
 			.daddr = {tup.daddr[0], tup.daddr[1], tup.daddr[2], tup.daddr[3]},
 			.sport = ntohs(tup.sport),

@@ -25,8 +25,8 @@ type CommonEvent struct {
 }
 
 func CommonEventFromBuffer(buf *bytes.Buffer) (*CommonEvent, error) {
-	if buf.Len() < C.sizeof_event_t {
-		return nil, fmt.Errorf("expected buf.Len() >= %d, but got %d", C.sizeof_event_t, buf.Len())
+	if buf.Len() < C.sizeof_common_event_t {
+		return nil, fmt.Errorf("expected buf.Len() >= %d, but got %d", C.sizeof_common_event_t, buf.Len())
 	}
 	e := &CommonEvent{}
 	e.Timestamp = binary.LittleEndian.Uint64(buf.Next(8))

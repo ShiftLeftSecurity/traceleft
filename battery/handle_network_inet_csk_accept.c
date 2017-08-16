@@ -86,10 +86,13 @@ int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 
 	if (check_family(skp, AF_INET)) {
 		tcp_v4_event_t ev = {
-			.timestamp = bpf_ktime_get_ns(),
-			.pid = pid >> 32,
-			.ret = 0,
-			.name = "accept_v4",
+			.common = {
+				.timestamp = bpf_ktime_get_ns(),
+				.tgid = pid >> 32,
+				.ret = 0,
+				.name = "accept_v4",
+				.hash = 0,
+			},
 			.sport = lport,
 			.dport = ntohs(dport),
 			.netns = net_ns_inum,
@@ -103,10 +106,13 @@ int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 		}
 	} else if (check_family(skp, AF_INET6)) {
 		tcp_v6_event_t ev = {
-			.timestamp = bpf_ktime_get_ns(),
-			.pid = pid >> 32,
-			.ret = 0,
-			.name = "accept_v6",
+			.common = {
+				.timestamp = bpf_ktime_get_ns(),
+				.tgid = pid >> 32,
+				.ret = 0,
+				.name = "accept_v6",
+				.hash = 0,
+			},
 			.sport = lport,
 			.dport = ntohs(dport),
 			.netns = net_ns_inum,
