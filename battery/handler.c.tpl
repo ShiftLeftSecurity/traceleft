@@ -39,17 +39,20 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 	bpf_map_delete_elem(&{{ .Name }}args, &pid);
 
 	{{ .Name }}_event_t evt = {
-		.timestamp = bpf_ktime_get_ns(),
-		.program_id = program_id ? *program_id : 0,
-		.name = "{{ .Name }}",
-		.pid = pid >> 32,
-		.ret = PT_REGS_RC(ctx),
-		.hash = fnv64a_init(),
+		.common = {
+			.timestamp = bpf_ktime_get_ns(),
+			.program_id = program_id ? *program_id : 0,
+			.name = "{{ .Name }}",
+			.tgid = pid >> 32,
+			.ret = PT_REGS_RC(ctx),
+			.hash = fnv64a_init(),
+		},
 	};
 
-	fnv64a_update(&evt.hash, (char *)&evt.pid, sizeof(evt.pid));
-	fnv64a_update(&evt.hash, (char *)&evt.ret, sizeof(evt.ret));
-	fnv64a_update(&evt.hash, (char *)evt.name, sizeof(evt.name));
+	fnv64a_update(&evt.common.hash, (char *)&evt.common.program_id, sizeof(evt.common.program_id));
+	fnv64a_update(&evt.common.hash, (char *)&evt.common.tgid, sizeof(evt.common.tgid));
+	fnv64a_update(&evt.common.hash, (char *)&evt.common.ret, sizeof(evt.common.ret));
+	fnv64a_update(&evt.common.hash, (char *)evt.common.name, sizeof(evt.common.name));
 
 	{{range $index, $element := .Args -}}
 	    {{if eq $element.Type "char"}}
@@ -60,7 +63,7 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 	{{- end }}
 
 	{{ range $index, $element := .Args }}
-	fnv64a_update(&evt.hash, (char *)&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}));
+	fnv64a_update(&evt.common.hash, (char *)&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}));
 	{{- end }}
 
 	bpf_perf_event_output(ctx, &events, cpu, &evt, sizeof(evt));
