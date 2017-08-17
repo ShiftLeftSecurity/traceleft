@@ -36,11 +36,72 @@ import (
 	"fmt"
 	"net"
 	"hash/fnv"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
 	"syscall"
 	"unsafe"
 )
 
 import "C"
+
+type FdInfo struct {
+	Path  string
+	Ino   uint64
+	Major uint64
+	Minor uint64
+}
+
+// Pid -> Fd -> FdInfo
+type FdMap struct {
+	sync.RWMutex
+	items map[uint32]map[uint32]FdInfo
+}
+
+func NewFdMap() *FdMap {
+	return &FdMap{
+		items: make(map[uint32]map[uint32]FdInfo),
+	}
+}
+
+func (f *FdMap) Get(pid, fd uint32) (*FdInfo, bool) {
+	f.RLock()
+	defer f.RUnlock()
+
+	inner, ok := f.items[pid]
+	if !ok {
+		return nil, ok
+	}
+
+	info, ok := inner[fd]
+	return &info, ok
+}
+
+func (f *FdMap) Put(pid, fd uint32, info FdInfo) {
+	f.Lock()
+	defer f.Unlock()
+
+	if _, ok := f.items[pid]; !ok {
+		f.items[pid] = make(map[uint32]FdInfo)
+	}
+
+	f.items[pid][fd] = info
+}
+
+func (f *FdMap) Delete(pid, fd uint32) {
+	f.Lock()
+	defer f.Unlock()
+
+	if m, ok := f.items[pid]; ok {
+		delete(m, fd)
+	}
+}
+
+type Context struct {
+	Fds *FdMap
+}
 
 // kernel structures
 
@@ -181,6 +242,27 @@ type UserMsghdr struct {
 	MsgControl    unsafe.Pointer
 	MsgControllen int64
 	MsgFlags      uint64
+}
+
+func (e FileEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+	name, err := procLookupPath(uint32(ce.Pid), uint32(e.Fd))
+	if err != nil {
+		name = "unknown"
+	}
+
+	fdInfo := FdInfo{Path: name, Ino: e.Ino, Major: e.Major, Minor: e.Minor}
+
+	// ignore entries not backed by files, like sockets or anonymous inodes
+	if strings.HasPrefix(fdInfo.Path, "/") {
+		ctx.Fds.Put(uint32(ce.Pid), uint32(e.Fd), fdInfo)
+	}
+
+	return fmt.Sprintf("Fd %d ", e.Fd)
+}
+
+// FileEvent is not meant to be seen by the users
+func (e FileEvent) Metric() *Metric {
+	return nil
 }
 
 // syscall data
@@ -473,12 +555,12 @@ type ConnectV6Event struct {
 
 // network events string functions
 
-func (e ConnectV4Event) String(ret int64) string {
+func (e ConnectV4Event) String(ret int64, ctx Context, ce CommonEvent) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa(e.Saddr),
 		inet_ntoa(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
 
-func (e ConnectV6Event) String(ret int64) string {
+func (e ConnectV6Event) String(ret int64, ctx Context, ce CommonEvent) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa6(e.Saddr),
 		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
@@ -546,6 +628,17 @@ func inet_ntoa6(ip [16]byte) string {
 }
 `
 
+const fileTemplate = `
+// file events struct
+
+type FileEvent struct {
+	Fd    uint64
+	Ino   uint64
+	Major uint64
+	Minor uint64
+}
+`
+
 const goStructTemplate = `
 type {{ .Name }} struct {
 	{{- range $index, $param := .Params }}
@@ -587,13 +680,17 @@ func bufLen(buf [256]byte) int {
 }
 
 type Event interface {
-	String(ret int64) string
+	String(ret int64, ctx Context, ce CommonEvent) string
 	Metric() *Metric
+}
+
+func procLookupPath(pid, fd uint32) (string, error) {
+	return os.Readlink(fmt.Sprintf("/proc/%d/fd/%d", pid, fd))
 }
 
 type DefaultEvent struct{}
 
-func (w DefaultEvent) String(ret int64) string {
+func (w DefaultEvent) String(ret int64, ctx Context, ce CommonEvent) string {
 	return ""
 }
 
@@ -604,7 +701,7 @@ func (w DefaultEvent) Metric() *Metric {
 
 // TODO: Use template functions for parameter types & names, make buffer len decision generic for other syscalls
 const eventStringsTemplate = `
-func (e {{ .Name }}) String(ret int64) string {
+func (e {{ .Name }}) String(ret int64, ctx Context, ce CommonEvent) string {
 	{{- $name := .Name }}
 	{{- range $index, $param := .Params }}
 		{{- if or (eq $param.Name "Buf") (eq $param.Name "Filename") (eq $param.Name "Pathname") }}
@@ -619,18 +716,49 @@ func (e {{ .Name }}) String(ret int64) string {
 			{{- end}}
 	bufferGo := C.GoStringN(buffer, length)
 		{{- end }}
+		{{- if (eq $param.Name "Fd") }}
+	fileName := "unknown"
+	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
+	if ok {
+		var stat syscall.Stat_t
+		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
+		err := syscall.Stat(path, &stat)
+		if err != nil {
+			if err == syscall.ENOENT {
+				// the file doesn't exist anymore, it's probably "info.Path"
+				// but we're not sure
+				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+			}
+		}
+		if info.Ino == stat.Ino &&
+			info.Major == stat.Dev>>8 &&
+			info.Minor == stat.Dev&0xff {
+			fileName = info.Path
+		}
+	}
+		{{- end }}
+	{{- end }}
+
+	{{- if (eq $name "CloseEvent") }}
+	ctx.Fds.Delete(uint32(ce.Pid), uint32(e.Fd))
 	{{- end }}
 
 	return fmt.Sprintf("{{- range $index, $param := .Params -}}
 	{{ $param.Name }}
+	{{- if (eq $param.Name "Fd") }} %d<%s> {{else}}
 	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") (eq $param.Type "uint32") }} %d {{else}} %q {{ end -}}
+	{{- end }}
 	{{- end }}",
 	{{- range $index, $param := .Params -}}
 		{{ if $index }},{{ end }}
+		{{- if (eq $param.Name "Fd") -}}
+			e.{{ $param.Name }}, fileName
+		{{- else }}
 		{{- if or (eq $param.Name "Buf") (eq $param.Name "Filename") (eq $param.Name "Pathname") -}}
 			 bufferGo
 			{{- else -}}
 			 e.{{ $param.Name }}
+		{{- end -}}
 		{{- end -}}
 	{{- end -}})
 }
@@ -673,6 +801,13 @@ const getStructTemplate = `
 `
 
 const getStructEpilogue = `
+	// file events
+	case "fd_install":
+		ev := FileEvent{}
+		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
+			return nil, err
+		}
+		return ev, nil
 	// network events
 	case "close_v4":
 		fallthrough
@@ -1044,6 +1179,10 @@ func GenerateGoStructs(goSyscalls []Syscall) (string, error) {
 			protoTypeConversions,
 		}
 		goTmpl.Execute(buf, tmplData)
+	}
+
+	if _, err := buf.WriteString(fileTemplate); err != nil {
+		return "", fmt.Errorf("error writing to buffer: %v", err)
 	}
 
 	return buf.String(), nil

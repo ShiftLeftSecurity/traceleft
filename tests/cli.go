@@ -33,6 +33,7 @@ var (
 	outfile     string
 	outfileLock sync.Mutex
 
+	ctx              tracer.Context
 	handlerCacheSize int
 
 	quiet bool
@@ -42,6 +43,7 @@ func init() {
 	flag.StringVar(&outfile, "outfile", "", "where to write output to (defaults to stdout)")
 	flag.IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
 	flag.BoolVar(&quiet, "quiet", false, "be quiet")
+	ctx.Fds = tracer.NewFdMap()
 }
 
 func parsePids(pidsStr string) ([]int, error) {
@@ -156,10 +158,16 @@ func handleEvent(data *[]byte) {
 		fmt.Fprintf(os.Stderr, "Failed to get %q struct: %v\n", commonEvent.Name, err)
 		return
 	}
+
+	eventStr := event.String(commonEvent.Ret, ctx, *commonEvent)
+	if commonEvent.Name == "fd_install" {
+		return
+	}
+
 	if outfile != "" {
-		go writeToOutfile(msg + event.String(commonEvent.Ret))
+		go writeToOutfile(msg + eventStr)
 	} else {
-		fmt.Println(msg + event.String(commonEvent.Ret))
+		fmt.Println(msg + eventStr)
 	}
 }
 

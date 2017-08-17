@@ -38,6 +38,7 @@ var (
 		},
 		Run: cmdTrace,
 	}
+	ctx tracer.Context
 
 	handlerCacheSize      int
 	collectorAddr         string
@@ -48,6 +49,7 @@ func init() {
 	traceCmd.Flags().IntVar(&handlerCacheSize, "handler-cache-size", 4, "size of the eBPF handler cache")
 	traceCmd.Flags().StringVar(&collectorAddr, "collector-addr", "", "addr of the collector service ('host:port' pair w/o protocol). otherwise events are logged to stdout")
 	traceCmd.Flags().BoolVar(&collectorWithInsecure, "collector-insecure", false, "disable transport security for collector connection")
+	ctx.Fds = tracer.NewFdMap()
 }
 
 var eventChan chan *tracer.EventData
@@ -71,8 +73,18 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 	} else {
 		go func() {
 			for event := range eventChan {
-				fmt.Printf("name %s pid %d program id %d return value %d %s\n",
-					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, event.Event.String(event.Common.Ret))
+				evString := event.Event.String(event.Common.Ret, ctx, event.Common)
+				if event.Common.Name == "fd_install" {
+					continue
+				}
+
+				containerStr := ""
+				if isContainer(event.Common.Pid) {
+					containerStr = "[container]"
+				}
+
+				fmt.Printf("name %s pid %d program id %d return value %d %s%s\n",
+					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, evString, containerStr)
 			}
 		}()
 	}
@@ -107,6 +119,19 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 
 func init() {
 	RootCmd.AddCommand(traceCmd)
+}
+
+func isContainer(pid int64) bool {
+	mntNs, err := os.Readlink(fmt.Sprintf("/proc/%d/ns/mnt", pid))
+	if err != nil {
+		return false
+	}
+	hostMntNs, err := os.Readlink("/proc/1/ns/mnt")
+	if err != nil {
+		return false
+	}
+
+	return mntNs != hostMntNs
 }
 
 func handleEvent(data *[]byte) {

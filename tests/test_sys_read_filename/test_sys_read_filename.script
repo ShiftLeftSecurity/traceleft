@@ -1,0 +1,2 @@
+trace 42 %PID% %BASEDIR%/battery/out/handle_syscall_read.bpf
+sleep 2

@@ -1,8 +1,9 @@
-#include <uapi/linux/ptrace.h>
 #include <linux/kconfig.h>
+#include <uapi/linux/ptrace.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Waddress-of-packed-member"
+#include <linux/fs.h>
 #include <uapi/linux/bpf.h>
 #pragma clang diagnostic pop
 #include "bpf_helpers.h"
@@ -213,6 +214,119 @@ struct bpf_map_def SEC("maps/handle_chown_progs_ret") handle_chown_progs_ret = {
 	.max_entries = 32768,
 	.map_flags = 0,
 };
+
+/* This is a key/value store with the keys being pid_tgid and values being
+ * fd_install_t.
+ *
+ * It is populated by userspace and read by the eBPF program to know which pids
+ * to watch.
+ * */
+struct bpf_map_def SEC("maps/file_events_pids_to_watch") file_events_pids_to_watch = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 1024,
+	.map_flags = 0,
+	.pinning = PIN_GLOBAL_NS,
+	.namespace = "traceleft",
+};
+
+typedef struct {
+	unsigned long fd;
+	struct file *file;
+} fd_install_t;
+
+/* This is a key/value store with the keys being pid_tgid and values being
+ * fd_install_t.
+ *
+ * It is used to keep context between kprobe/fd_install and
+ * kretprobe/fd_install.
+ * */
+struct bpf_map_def SEC("maps/fdinstall_args") fdinstall_args = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(__u64),
+	.value_size = sizeof(fd_install_t),
+	.max_entries = 1024,
+};
+
+typedef struct {
+	common_event_t common;
+	u64 fd;
+	u64 ino;
+	u64 major;
+	u64 minor;
+} file_event_t;
+
+SEC("kprobe/fd_install")
+int kprobe__fd_install(struct pt_regs *ctx)
+{
+	u64 pid = bpf_get_current_pid_tgid();
+	u32 tgid = pid >> 32;
+	u32 *exists = NULL;
+	unsigned long fd = (unsigned long) PT_REGS_PARM1(ctx);
+	struct file *f = (struct file *) PT_REGS_PARM2(ctx);
+
+	fd_install_t fd_i = {
+		.fd = fd,
+		.file = f,
+	};
+
+	exists = bpf_map_lookup_elem(&file_events_pids_to_watch, &tgid);
+	if (exists == NULL || !*exists) {
+		return 0;
+	}
+
+	bpf_map_update_elem(&fdinstall_args, &pid, &fd_i, BPF_ANY);
+
+	return 0;
+}
+
+SEC("kretprobe/fd_install")
+int kretprobe__fd_install(struct pt_regs *ctx)
+{
+	u64 pid = bpf_get_current_pid_tgid();
+	u32 cpu = bpf_get_smp_processor_id();
+	fd_install_t *fd_ip;
+	fd_ip = bpf_map_lookup_elem(&fdinstall_args, &pid);
+	if (fd_ip == NULL) {
+		return 0; // missed entry
+	}
+	bpf_map_delete_elem(&fdinstall_args, &pid);
+
+	fd_install_t fd_i;
+	bpf_probe_read(&fd_i, sizeof(fd_i), fd_ip);
+
+	struct inode *f_inode;
+	unsigned long i_ino;
+	struct super_block *sb = NULL;
+	dev_t s_dev;
+
+	bpf_probe_read(&f_inode, sizeof(f_inode), &fd_i.file->f_inode);
+	bpf_probe_read(&i_ino, sizeof(i_ino), &f_inode->i_ino);
+	bpf_probe_read(&sb, sizeof(sb), &f_inode->i_sb);
+	bpf_probe_read(&s_dev, sizeof(s_dev), &sb->s_dev);
+
+	u64 *program_id = bpf_map_lookup_elem(&program_id_per_pid, &pid);
+
+	file_event_t ev = {
+		.common = {
+			.timestamp = bpf_ktime_get_ns(),
+			.program_id = program_id ? *program_id : 0,
+			.tgid = pid >> 32,
+			.ret = 0,
+			.name = "fd_install",
+			.hash = 0,
+		},
+		.fd = fd_i.fd,
+		.ino = i_ino,
+		.major = MAJOR(s_dev),
+		.minor = MINOR(s_dev),
+	};
+
+	bpf_perf_event_output(ctx, &events, cpu, &ev, sizeof(ev));
+
+	return 0;
+}
 
 SEC("kprobe/SyS_read")
 int kprobe__sys_read(struct pt_regs *ctx)
