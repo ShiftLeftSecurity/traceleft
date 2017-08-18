@@ -14,27 +14,30 @@ the implementation.
 
 [`fd_install`][fd_install] is a kernel function that installs a new file
 descriptor in the file descriptor table of a process. It is called every time a
-file descriptor is made available to a process. We hook into `fd_install`
+file descriptor is made available to a process, which is typically done via
+system calls like `open`, `openat` or `socket`. We hook into `fd_install`
 (kprobe and kretprobe) and pass the file descriptor number to userspace. Then,
 userspace will call [`readlink`][readlink] on `/proc/$PID/fd/$FD_NUMBER` to get
 the path that file descriptor points to and store it in a Go map `(pid, fd) ->
-path`. Then, when we get a file event, we check the map and print the path
-along with the file descriptor number.
+path`. Then, when we get a file event (typically `read` or `write`), we check
+the map and print the path along with the file descriptor number.
 
 This is a best-effort solution: we'll miss short-lived file descriptors because
 we might not have time to look up in `/proc` before the file descriptor or even
 the process disappears.
 
 With this schema, we might report incorrect events. Consider the case of a
-short-lived file descriptor followed by an open call. We might record the wrong
-file path to the map because we'll read the path of the newly opened file.
+short-lived file descriptor followed by an open call (which will reuse the same
+file descriptor). We might record the wrong file path to the map because we'll
+read the path of the newly opened file.
 
-To address this problem, we record in the map the inode number, along with the
-device major and minor numbers. Then, at the time we receive a file event, we
-check that the file living in the path recorded in the map corresponds with the
-`(inode, major, minor)` tuple recorded. If so, we include the path in the
-event. If not, we consider it "unknown". If there's no file in that path
-anymore, we consider the file `deleted` and we offer the possible path.
+To address this problem, the `fd_install` kprobe will record in the map the
+inode number, along with the device major and minor numbers. Then, at the time
+we receive a file event, we check that the file living in the path recorded in
+the map corresponds with the `(inode, major, minor)` tuple recorded. If so, we
+include the path in the event. If not, we consider it "unknown". If there's no
+file in that path anymore, we consider the file `deleted` and we offer the
+possible path.
 
 Checking the path at the time we receive a file event would not work for
 containers, since the path we have stored is relative to the mount namespace of
@@ -44,10 +47,10 @@ process has a mount namespace that's not the host's and include this
 information in the event.
 
 Finally, to clean up the map when a file descriptor is closed, we delete the
-`(pid, fd)` entry in the map when we receive a close event. Note that we can
-leak entries if we don't trace close events or we miss close kretprobes. In
-that case, we assume the library user will clean up the map for a given PID
-when the process exits.
+`(pid, fd)` entry in the map when we receive a close event via the close
+syscall. Note that we can leak entries if we don't trace close events, we miss
+close kretprobes, or the process terminates. In that case, we assume the
+library user will clean up the map for a given PID when the process exits.
 
 ## Alternative designs considered
 
