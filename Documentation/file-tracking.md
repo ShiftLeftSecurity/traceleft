@@ -50,7 +50,8 @@ Finally, to clean up the map when a file descriptor is closed, we delete the
 `(pid, fd)` entry in the map when we receive a close event via the close
 syscall. Note that we can leak entries if we don't trace close events, we miss
 close kretprobes, or the process terminates. In that case, we assume the
-library user will clean up the map for a given PID when the process exits.
+library user will clean up the map for a given PID using `FdMap.DeletePid()`
+when the process exits.
 
 ## Alternative designs considered
 

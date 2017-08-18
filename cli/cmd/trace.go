@@ -115,6 +115,7 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 
 	<-sig
 	tracer.Stop()
+	ctx.Fds.Clear()
 }
 
 func init() {
