@@ -111,7 +111,7 @@ pregen: bpf battery
 # Metagenerator target
 
 .PHONY: metagen
-metagen:
+metagen: build-docker-image
 	$(MAKE) -C $(METAGENERATOR_DIR) \
 		TRACER_DIR=$(TRACER_DIR) \
 		BATTERY_DIR=$(BATTERY_DIR) \
