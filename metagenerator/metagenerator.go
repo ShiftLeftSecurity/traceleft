@@ -99,6 +99,20 @@ func (f *FdMap) Delete(pid, fd uint32) {
 	}
 }
 
+func (f *FdMap) DeletePid(pid uint32) {
+	f.Lock()
+	defer f.Unlock()
+
+	delete(f.items, pid)
+}
+
+func (f *FdMap) Clear() {
+	f.Lock()
+	defer f.Unlock()
+
+	f.items = make(map[uint32]map[uint32]FdInfo)
+}
+
 type Context struct {
 	Fds *FdMap
 }
