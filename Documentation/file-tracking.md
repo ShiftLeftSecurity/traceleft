@@ -12,10 +12,14 @@ the implementation.
 
 ## Implementation and caveats
 
-We keep a userspace Go map `(pid, fd) -> path` which we populate by hooking
-into `fd_install` (kprobe and kretprobe) and reading `/proc/$PID/fd/$FD_NUMBER`
-in userspace. Then, when we get a file event, we check the map and print the
-path along with the file descriptor number.
+[`fd_install`][fd_install] is a kernel function that installs a new file
+descriptor in the file descriptor table of a process. It is called every time a
+file descriptor is made available to a process. We hook into `fd_install`
+(kprobe and kretprobe) and pass the file descriptor number to userspace. Then,
+userspace will call [`readlink`][readlink] on `/proc/$PID/fd/$FD_NUMBER` to get
+the path that file descriptor points to and store it in a Go map `(pid, fd) ->
+path`. Then, when we get a file event, we check the map and print the path
+along with the file descriptor number.
 
 This is a best-effort solution: we'll miss short-lived file descriptors because
 we might not have time to look up in `/proc` before the file descriptor or even
