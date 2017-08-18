@@ -19,8 +19,8 @@ DOCKER_BUILDER_FILE := builder.Dockerfile
 VENDOR_DIR := vendor
 BUILD_DIR := build
 BIN_DIR := $(BUILD_DIR)/bin
-SLAGENT_BIN := slagent
-SLAGENT_MAIN := cli/main.go
+TRACELEFT_BIN := traceleft
+TRACELEFT_MAIN := cli/main.go
 GENERATOR_DIR := generator
 # The only proto definitions are in generator for now
 PROTO_DIR := $(GENERATOR_DIR)
@@ -38,7 +38,7 @@ METRICS_DIR := metrics
 METRICS_TARGETS := $(patsubst $(METRICS_DIR)/%.proto,$(METRICS_DIR)/%.pb.go,$(wildcard $(METRICS_DIR)/*.proto))
 
 .PHONY: all
-all: protogen handlers pregen slagent
+all: protogen handlers pregen traceleft
 
 #
 # Docker builder image
@@ -51,11 +51,11 @@ delete-docker-image:
 	$(SUDO) docker rmi -f $(DOCKER_BUILDER_IMAGE)
 
 #
-# Main slagent target
+# Main traceleft target
 
 ifeq ($(INSIDE_CONTAINER),false)
 
-$(SLAGENT_BIN): build-docker-image
+$(TRACELEFT_BIN): build-docker-image
 	$(SUDO) docker run --rm \
 		-v $(PWD):/go/src/github.com/ShiftLeftSecurity/traceleft \
 		-e INSIDE_CONTAINER=true \
@@ -66,10 +66,10 @@ $(SLAGENT_BIN): build-docker-image
 
 else
 
-$(SLAGENT_BIN):
+$(TRACELEFT_BIN):
 	CGO_ENABLED=$(CGO_ENABLED) \
 	$(GO) build $(GO_BUILD_ARGS) \
-	-o $(BIN_DIR)/$@ $(SLAGENT_MAIN)
+	-o $(BIN_DIR)/$@ $(TRACELEFT_MAIN)
 
 endif
 

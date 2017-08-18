@@ -27,7 +27,7 @@ sufficient.
 Here we enable all network handlers:
 
 ```
-# build/bin/slagent trace battery/out/handle_network_*
+# build/bin/traceleft trace battery/out/handle_network_*
 name connect_v4 pid 5435 program id 0 return value 0 Saddr 192.168.35.127 Daddr 172.217.16.174 Sport 50630 Dport 80 Netns 4026531973
 name close_v4 pid 5435 program id 0 return value 0 Saddr 192.168.35.127 Daddr 172.217.16.174 Sport 50630 Dport 80 Netns 4026531973
 name close_v6 pid 5471 program id 0 return value 0 Saddr ::1 Daddr ::1 Sport 39192 Dport 9090 Netns 4026531973

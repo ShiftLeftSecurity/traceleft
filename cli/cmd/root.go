@@ -15,8 +15,8 @@ var cfgFile string
 var pprofListenAddr string
 
 var RootCmd = &cobra.Command{
-	Use:   "slagent",
-	Short: "ShiftLeft Agent",
+	Use:   "traceleft",
+	Short: "Trace syscalls and network events from arbitrary processes",
 }
 
 func Execute() {
@@ -28,7 +28,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.slagent.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.traceleft.yaml)")
 	RootCmd.PersistentFlags().StringVar(&pprofListenAddr, "pprof-listen-addr", "", "listen address for HTTP profiling and instrumentation server")
 }
 
