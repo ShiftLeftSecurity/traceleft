@@ -90,9 +90,13 @@ func (a *Aggregator) add(event *tracer.EventData) {
 	defer a.Unlock()
 
 	var metric *tracer.Metric
-	if metric, seen := a.eventHashes[event.Common.Hash]; seen {
-		metric.Count++
-		return
+	// TODO: not all handlers do calculate a hash yet. Once they do,
+	// remove the `if event.Common.Hash != 0`
+	if event.Common.Hash != 0 {
+		if metric, seen := a.eventHashes[event.Common.Hash]; seen {
+			metric.Count++
+			return
+		}
 	}
 
 	metric = event.Event.Metric()
