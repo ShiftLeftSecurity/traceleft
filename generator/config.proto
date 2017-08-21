@@ -8,6 +8,7 @@ message Event {
         string type = 2;
         string name = 3;
         string suffix = 4;
+        bool skipHash = 5;
     }
     repeated Args args = 2;
 }
