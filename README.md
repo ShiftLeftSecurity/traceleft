@@ -2,11 +2,11 @@
 
 ## Instructions
 
-### Run example slagent
+### Run example traceleft
 
 ```bash
 make
-sudo build/bin/slagent trace $PID1,$PID2:battery/out/handle_syscall_read.bpf $PID3:battery/out/handle_syscall_chown.bpf
+sudo build/bin/traceleft trace $PID1,$PID2:battery/out/handle_syscall_read.bpf $PID3:battery/out/handle_syscall_chown.bpf
 ```
 
 The `$PID` is optional and can be skipped to load a handler as default handler.
@@ -15,7 +15,7 @@ To send events to the demo server (`metrics/echoserver`) instead of logging to
 stdout, use `--collector-insecure --collector-addr localhost:50051 `:
 
 ```
-sudo build/bin/slagent trace --collector-insecure --collector-addr localhost:50051 $(find battery/out/*)
+sudo build/bin/traceleft trace --collector-insecure --collector-addr localhost:50051 $(find battery/out/*)
 ```
 
 In a second terminal, run the echoserver to see an event counter:
@@ -63,7 +63,7 @@ Running test_sys_close with PID: 8099               [PASSED]
 
 ### Analyse performances
 
-slagent offers [HTTP endpoints with profiling information](https://golang.org/pkg/net/http/pprof/).
+traceleft offers [HTTP endpoints with profiling information](https://golang.org/pkg/net/http/pprof/).
 To enable them, use `--pprof-listen-addr=localhost:9090`.
 Then, you can access one of the profiling endpoint:
 
@@ -74,7 +74,7 @@ go tool pprof http://localhost:9090/debug/pprof/profile
 
 #### eBPF performances
 
-eBPF programs run in the kernel and their CPU usage are not accounted in the slagent process. This can be monitored with:
+eBPF programs run in the kernel and their CPU usage are not accounted in the traceleft process. This can be monitored with:
 ```bash
 sudo perf top
 ```
