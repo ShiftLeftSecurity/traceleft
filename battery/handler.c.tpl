@@ -69,7 +69,11 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 	{{- end }}
 
 	{{ range $index, $element := .Args }}
+	{{- if $element.SkipHash -}}
+	/* skip hash of evt.{{ $element.Name }} */
+	{{ else -}}
 	fnv64a_update(&evt.common.hash, (char *)&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}));
+	{{ end -}}
 	{{- end }}
 
 	bpf_perf_event_output(ctx, &events, cpu, &evt, sizeof(evt));

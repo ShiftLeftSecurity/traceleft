@@ -43,6 +43,7 @@
           "position": 2,
           "type": "char",
           "name": "buf",
+          "skipHash": true,
           "suffix": "[256]"
         },
         {
@@ -64,6 +65,7 @@
           "position": 2,
           "type": "char",
           "name": "buf",
+          "skipHash": true,
           "suffix": "[256]"
         },
         {
