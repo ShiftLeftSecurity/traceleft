@@ -83,8 +83,8 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 					containerStr = "[container]"
 				}
 
-				fmt.Printf("name %s pid %d program id %d return value %d %s%s\n",
-					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, evString, containerStr)
+				fmt.Printf("name %s pid %d program id %d return value %d hash %d %s%s\n",
+					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, event.Common.Hash, evString, containerStr)
 			}
 		}()
 	}
