@@ -40,7 +40,9 @@ calls the `callback` for each received event.
 
 `metrics/` contains experimental aggregator code.
 
-## Probes
+## Architecture
+
+![traceleft-architecture](traceleft-architecture.png)
 
 traceleft adds k{ret,}probes for all traced syscalls and kernel functions (see
 `bpf/trace_syscalls.c` for a list). The only thing the trace probes do is tail
