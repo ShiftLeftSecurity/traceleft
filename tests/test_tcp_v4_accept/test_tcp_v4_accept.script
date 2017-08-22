@@ -1,2 +1,3 @@
 trace 42 %PID% %BASEDIR%/battery/out/handle_network_inet_csk_accept.bpf
+signal-fifo %FIFO%
 sleep 4

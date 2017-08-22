@@ -24,11 +24,11 @@ var (
 	historyFn = filepath.Join(os.TempDir(), ".liner_example_history")
 
 	commandsUsage = map[string]string{
-		"trace":      "trace <program_id> <pid>[,<pid>...] <path elf object>",
-		"stop":       "stop <program_id> <pid>[,<pid>...]",
-		"sleep":      "sleep <sec>",
-		"write-file": "write-file <file> <string>",
-		"help":       "help [<cmd>]",
+		"trace":       "trace <program_id> <pid>[,<pid>...] <path elf object>",
+		"stop":        "stop <program_id> <pid>[,<pid>...]",
+		"sleep":       "sleep <sec>",
+		"signal-fifo": "signal-fifo <file>",
+		"help":        "help [<cmd>]",
 	}
 
 	outfile     string
@@ -117,13 +117,12 @@ func cmdSleep(args []string) error {
 	return nil
 }
 
-func cmdWriteFile(args []string) error {
-	if len(args) < 2 {
-		return fmt.Errorf("invalid args (usage: %s): %v", commandsUsage["write-file"], args)
+func cmdSignalFifo(args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("invalid args (usage: %s): %v", commandsUsage["signal-fifo"], args)
 	}
-	file := args[0]
-	toWrite := strings.Join(args[1:], " ")
-	return ioutil.WriteFile(file, []byte(toWrite), 0644)
+	fifo := args[0]
+	return ioutil.WriteFile(fifo, []byte{}, 0644)
 }
 
 func cmdHelp(args []string) error {
@@ -234,8 +233,8 @@ func main() {
 			err = cmdTrace(args, tracer.Probe)
 		case "stop":
 			err = cmdStop(args, tracer.Probe)
-		case "write-file":
-			err = cmdWriteFile(args)
+		case "signal-fifo":
+			err = cmdSignalFifo(args)
 		case "help":
 			cmdHelp(args)
 		default:
