@@ -69,8 +69,10 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 	{{- end }}
 
 	{{ range $index, $element := .Args }}
-	{{- if $element.SkipHash -}}
+	{{- if eq $element.HashFunc "skip" -}}
 	/* skip hash of evt.{{ $element.Name }} */
+	{{ else if eq $element.HashFunc "string" -}}
+	fnv64a_update_str(&evt.common.hash, (char *)&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}));
 	{{ else -}}
 	fnv64a_update(&evt.common.hash, (char *)&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}));
 	{{ end -}}
