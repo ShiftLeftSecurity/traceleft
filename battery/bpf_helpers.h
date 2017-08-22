@@ -142,17 +142,39 @@ static int (*bpf_l4_csum_replace)(void *ctx, int off, int from, int to, int flag
 
 // FNV hash parameters:
 // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV_hash_parameters
+#define FNV_PRIME		0x100000001b3
+#define FNV_OFFSET_BASIS	0xcbf29ce484222325
+
 __attribute__((always_inline))
 static inline u64 fnv64a_init() {
-	return 0xcbf29ce484222325;
+	return FNV_OFFSET_BASIS;
 }
 
 __attribute__((always_inline))
 static inline void fnv64a_update(u64 *hash, const char *buf, int size) {
-	const u64 prime = 0x100000001b3;
+	const u64 prime = FNV_PRIME;
 	#pragma clang loop unroll(full)
 	for (int i = 0; i < size; i++) {
 		*hash = (*hash ^ buf[i]) * prime;
+	}
+}
+
+__attribute__((always_inline))
+static inline void fnv64a_update_str(u64 *hash, const char *buf, int size) {
+	const u64 prime = FNV_PRIME;
+	int i;
+	#pragma clang loop unroll(full)
+	for (i = 0; i < size; i++) {
+		if (buf[i] == '\0')
+			break;
+
+		*hash = (*hash ^ buf[i]) * prime;
+	}
+	// stop at the NULL-terminated string but include the '\0' to
+	// make it more difficult to build collisions with two
+	// consecutive strings such as in the rename() syscall.
+	if (i < size) {
+		*hash = (*hash ^ '\0') * prime;
 	}
 }
 
