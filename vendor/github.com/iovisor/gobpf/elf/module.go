@@ -150,7 +150,7 @@ func NewModule(fileName string) *Module {
 		cgroupPrograms:     make(map[string]*CgroupProgram),
 		socketFilters:      make(map[string]*SocketFilter),
 		tracepointPrograms: make(map[string]*TracepointProgram),
-		log:                make([]byte, 65536),
+		log:                make([]byte, 262144),
 	}
 }
 
@@ -160,7 +160,7 @@ func NewModuleFromReader(fileReader io.ReaderAt) *Module {
 		probes:         make(map[string]*Kprobe),
 		cgroupPrograms: make(map[string]*CgroupProgram),
 		socketFilters:  make(map[string]*SocketFilter),
-		log:            make([]byte, 65536),
+		log:            make([]byte, 262144),
 	}
 }
 
