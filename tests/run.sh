@@ -47,6 +47,8 @@ make --silent -C "${testdir}"
 
 host_netns="$(readlink /proc/1/ns/net | cut -d "[" -f2 | cut -d "]" -f1)"
 
+exit_status=0
+
 for dir in "${testdir}"/*; do
     testname=$(basename "${dir}")
     testscript="${testdir}/${testname}/${testname}.script"
@@ -86,7 +88,10 @@ for dir in "${testdir}"/*; do
         printf "\r%-50s  \e[32m%-10s\e[39m \n" "${status_line}" "[PASSED]"
     else
         printf "\r%-50s  \e[31m%-10s\e[39m \n" "${status_line}" "[FAILED]"
+        exit_status=1
     fi
 
     rm -f "${outfile}"
 done
+
+exit $exit_status
