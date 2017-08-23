@@ -10,7 +10,7 @@ see only the file descriptor.
 We'll describe how we solved this problem and the drawbacks and limitations of
 the implementation.
 
-## Implementation and caveats
+## Implementation
 
 [`fd_install`][fd_install] is a kernel function that installs a new file
 descriptor in the file descriptor table of a process. It is called every time a
@@ -21,10 +21,6 @@ userspace will call [`readlink`][readlink] on `/proc/$PID/fd/$FD_NUMBER` to get
 the path that file descriptor points to and store it in a Go map `(pid, fd) ->
 path`. Then, when we get a file event (typically `read` or `write`), we check
 the map and print the path along with the file descriptor number.
-
-This is a best-effort solution: we'll miss short-lived file descriptors because
-we might not have time to look up in `/proc` before the file descriptor or even
-the process disappears.
 
 With this schema, we might report incorrect events. Consider the case of a
 short-lived file descriptor followed by an open call (which will reuse the same
@@ -52,6 +48,24 @@ syscall. Note that we can leak entries if we don't trace close events, we miss
 close kretprobes, or the process terminates. In that case, we assume the
 library user will clean up the map for a given PID using `FdMap.DeletePid()`
 when the process exits.
+
+## Limitations
+
+* This is a best-effort solution: we'll miss short-lived file descriptors
+  because we might not have time to look up in `/proc` before the file
+  descriptor or even the process disappears.
+
+* If a program uses `clone(CLONE_FILES)`, the same file descriptor table is
+  shared among several processes, so `fd_install` can be called only one time
+  and the FD will be installed in several processes. This means we won't know
+  the path of events on this cloned FD.
+
+* When file descriptors are inherited, `fd_install` is not called, so commands
+  like `( sleep 1 ; cat /dev/null ) > /etc/shadow` will also result in events
+  with an unknown path.
+
+* `dup2` and `dup3` duplicate a file descriptor but don't call `fd_install`, so
+  we'll also miss the path of events using the duplicated file descriptors.
 
 ## Alternative designs considered
 
