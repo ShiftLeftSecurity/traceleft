@@ -8,10 +8,7 @@ import (
 	"text/template"
 
 	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
 )
-
-const CONFIGPB_FILE string = "config.data"
 
 func fileExists(path string) bool {
 	if f, err := os.Stat(path); err != nil {
@@ -25,56 +22,19 @@ func fileExists(path string) bool {
 	return true
 }
 
-// Converts PB to JSON and writes on disk for re-reading later on
-func writePBFromJSON(pathToJson string) error {
+func unmarshalConfig(path string) (*Config, error) {
 	p := &Config{}
-	file, err := os.Open(pathToJson)
+	file, err := os.Open(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer file.Close()
 
 	if err := jsonpb.Unmarshal(file, p); err != nil {
-		return err
-	}
-
-	out, err := proto.Marshal(p)
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(CONFIGPB_FILE, out, 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func getConfigFromPB(pathToPB string) (*Config, error) {
-	p := &Config{}
-	in, err := ioutil.ReadFile(pathToPB)
-	if err != nil {
 		return nil, err
 	}
 
-	if err := proto.Unmarshal(in, p); err != nil {
-		return nil, err
-	}
 	return p, nil
-}
-
-func unmarshalConfig(path string) (*Config, error) {
-	// TODO: Only for now - till we have a way to get PB on the wire
-	if err := writePBFromJSON(path); err != nil {
-		return nil, err
-	}
-
-	config, err := getConfigFromPB(CONFIGPB_FILE)
-	if err != nil {
-		return nil, err
-	}
-
-	return config, nil
 }
 
 func buildSource(event *Event, tpl string, destDir string) error {
