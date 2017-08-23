@@ -19,7 +19,7 @@ syscalls.
 ### generator
 
 `generator/generator.go` autogenerates eBPF handlers for syscalls according to
-[config.json](../config.json).
+[config.json](../examples/config.json).
 
 ### battery
 

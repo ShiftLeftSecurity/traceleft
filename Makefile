@@ -26,10 +26,12 @@ GENERATOR_DIR := generator
 PROTO_DIR := $(GENERATOR_DIR)
 METAGENERATOR_DIR := metagenerator
 BPF_DIR := bpf
+EXAMPLES_DIR := examples
+CONFIG_JSON := $(EXAMPLES_DIR)/config.json
 
 TRACER_DIR := $(realpath tracer)
 BATTERY_DIR := $(realpath battery)
-CONFIG_FILE := $(realpath config.json)
+CONFIG_FILE := $(realpath $(EXAMPLES_DIR)/config.json)
 
 PROTO_SOURCES := $(wildcard $(PROTO_DIR)/*.proto)
 PROTO_TARGETS := $(patsubst $(PROTO_DIR)/%.proto,$(PROTO_DIR)/%.pb.go,$(PROTO_SOURCES))
@@ -161,7 +163,7 @@ traceleft-handlers:
 
 .PHONY: handlers
 handlers: traceleft-handlers
-	$(BIN_DIR)/traceleft-handlers gen-handler
+	$(BIN_DIR)/traceleft-handlers gen-handler --handler-config=$(CONFIG_JSON)
 
 .PHONY: clean
 clean:

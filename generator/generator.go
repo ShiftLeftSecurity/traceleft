@@ -43,7 +43,8 @@ func writePBFromJSON(pathToJson string) error {
 		return err
 	}
 
-	if err := ioutil.WriteFile(CONFIGPB_FILE, out, 0644); err != nil {
+	configPbPath := filepath.Join(filepath.Dir(pathToJson), CONFIGPB_FILE)
+	if err := ioutil.WriteFile(configPbPath, out, 0644); err != nil {
 		return err
 	}
 
@@ -69,7 +70,8 @@ func unmarshalConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
-	config, err := getConfigFromPB(CONFIGPB_FILE)
+	configPbPath := filepath.Join(filepath.Dir(path), CONFIGPB_FILE)
+	config, err := getConfigFromPB(configPbPath)
 	if err != nil {
 		return nil, err
 	}
