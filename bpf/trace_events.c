@@ -225,7 +225,7 @@ struct bpf_map_def SEC("maps/file_events_pids_to_watch") file_events_pids_to_wat
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(__u32),
-	.max_entries = 1024,
+	.max_entries = 32768,
 	.map_flags = 0,
 };
 
