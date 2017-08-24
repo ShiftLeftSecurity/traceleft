@@ -52,6 +52,7 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 			.tgid = pid >> 32,
 			.ret = PT_REGS_RC(ctx),
 			.hash = fnv64a_init(),
+			.flags = 0,
 		},
 	};
 
@@ -59,9 +60,15 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 	fnv64a_update(&evt.common.hash, (char *)&evt.common.tgid, sizeof(evt.common.tgid));
 	fnv64a_update(&evt.common.hash, (char *)&evt.common.ret, sizeof(evt.common.ret));
 	fnv64a_update(&evt.common.hash, (char *)evt.common.name, sizeof(evt.common.name));
+	int ret = 0;
+	// avoid unused variable error if we don't call bpf_probe_read
+	(void)ret;
 {{range $index, $element := .Args -}}
 	{{if eq $element.Type "char"}}
-	bpf_probe_read(&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}), (void *) PT_REGS_PARM{{ $element.Position }}(args));
+	ret = bpf_probe_read(&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}), (void *) PT_REGS_PARM{{ $element.Position }}(args));
+	if (ret < 0) {
+		evt.common.flags = COMMON_EVENT_FLAG_INCOMPLETE_PROBE_READ;
+	}
 	    {{- else }}
 	evt.{{ $element.Name }} = ({{ $element.Type }}) PT_REGS_PARM{{ $element.Position }}(args);
 		{{- end }}

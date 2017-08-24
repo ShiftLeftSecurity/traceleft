@@ -77,6 +77,7 @@ typedef struct {
 	int64_t  ret;
 	char     name[64];
 	uint64_t hash;
+	uint64_t flags;
 } common_event_t;
 ```
 

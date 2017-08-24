@@ -23,6 +23,7 @@ type CommonEvent struct {
 	Ret       int64
 	Name      string
 	Hash      uint64
+	Flags     uint64
 }
 
 func CommonEventFromBuffer(buf *bytes.Buffer) (*CommonEvent, error) {
@@ -38,6 +39,7 @@ func CommonEventFromBuffer(buf *bytes.Buffer) (*CommonEvent, error) {
 	nameCstr := (*C.char)(unsafe.Pointer(&nameBytes[0]))
 	e.Name = C.GoString(nameCstr)
 	e.Hash = binary.LittleEndian.Uint64(buf.Next(8))
+	e.Flags = binary.LittleEndian.Uint64(buf.Next(8))
 	return e, nil
 }
 
