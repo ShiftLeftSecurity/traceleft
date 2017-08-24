@@ -227,8 +227,6 @@ struct bpf_map_def SEC("maps/file_events_pids_to_watch") file_events_pids_to_wat
 	.value_size = sizeof(__u32),
 	.max_entries = 1024,
 	.map_flags = 0,
-	.pinning = PIN_GLOBAL_NS,
-	.namespace = "traceleft",
 };
 
 typedef struct {
