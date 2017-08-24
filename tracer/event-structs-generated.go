@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"hash/fnv"
 	"net"
 	"os"
 	"path/filepath"
@@ -706,34 +705,6 @@ func (e ConnectV4Event) String(ret int64, ctx Context, ce CommonEvent) string {
 func (e ConnectV6Event) String(ret int64, ctx Context, ce CommonEvent) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa6(e.Saddr),
 		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
-}
-
-func (e ConnectV4Event) Hash() (string, error) {
-	var err error
-	hash := fnv.New64()
-
-	err = binary.Write(hash, binary.LittleEndian, e.Saddr)
-	if err != nil {
-		return "", err
-	}
-	err = binary.Write(hash, binary.LittleEndian, e.Daddr)
-	if err != nil {
-		return "", err
-	}
-	err = binary.Write(hash, binary.LittleEndian, e.Sport)
-	if err != nil {
-		return "", err
-	}
-	err = binary.Write(hash, binary.LittleEndian, e.Dport)
-	if err != nil {
-		return "", err
-	}
-	err = binary.Write(hash, binary.LittleEndian, e.Netns)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", hash.Sum64()), nil
 }
 
 func (e ConnectV4Event) Metric() *Metric {
