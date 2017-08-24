@@ -59,23 +59,22 @@ int kretprobe__handle_{{ .Name }}(struct pt_regs *ctx)
 	fnv64a_update(&evt.common.hash, (char *)&evt.common.tgid, sizeof(evt.common.tgid));
 	fnv64a_update(&evt.common.hash, (char *)&evt.common.ret, sizeof(evt.common.ret));
 	fnv64a_update(&evt.common.hash, (char *)evt.common.name, sizeof(evt.common.name));
-
-	{{range $index, $element := .Args -}}
-	    {{if eq $element.Type "char"}}
+{{range $index, $element := .Args -}}
+	{{if eq $element.Type "char"}}
 	bpf_probe_read(&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}), (void *) PT_REGS_PARM{{ $element.Position }}(args));
 	    {{- else }}
 	evt.{{ $element.Name }} = ({{ $element.Type }}) PT_REGS_PARM{{ $element.Position }}(args);
-	    {{- end }}
+		{{- end }}
 	{{- end }}
 
-	{{ range $index, $element := .Args }}
+	{{range $index, $element := .Args }}
 	{{- if eq $element.HashFunc "skip" -}}
 	/* skip hash of evt.{{ $element.Name }} */
 	{{ else if eq $element.HashFunc "string" -}}
 	fnv64a_update_str(&evt.common.hash, (char *)&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}));
 	{{ else -}}
 	fnv64a_update(&evt.common.hash, (char *)&evt.{{ $element.Name }}, sizeof(evt.{{ $element.Name }}));
-	{{ end -}}
+	{{- end }}
 	{{- end }}
 
 	bpf_perf_event_output(ctx, &events, cpu, &evt, sizeof(evt));
