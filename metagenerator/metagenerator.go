@@ -834,6 +834,7 @@ message ProtobufCommonEvent {
 	int64 Ret = 3;
 	string Name = 4;
 	uint64 Hash = 5;
+	uint64 Flags = 6;
 }
 
 message ProtobufConnectV4Event {

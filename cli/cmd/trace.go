@@ -18,6 +18,8 @@ import (
 	"github.com/ShiftLeftSecurity/traceleft/tracer"
 )
 
+// #include <inttypes.h>
+// #include "../../bpf/events-struct.h"
 import "C"
 
 type Event struct {
@@ -83,8 +85,13 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 					containerStr = "[container]"
 				}
 
-				fmt.Printf("name %s pid %d program id %d return value %d hash %d %s%s\n",
-					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, event.Common.Hash, evString, containerStr)
+				errorStr := ""
+				if event.Common.Flags == C.COMMON_EVENT_FLAG_INCOMPLETE_PROBE_READ {
+					errorStr = "[incomplete]"
+				}
+
+				fmt.Printf("name %s pid %d program id %d return value %d hash %d %s%s%s\n",
+					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, event.Common.Hash, evString, containerStr, errorStr)
 			}
 		}()
 	}

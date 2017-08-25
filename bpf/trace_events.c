@@ -314,6 +314,7 @@ int kretprobe__fd_install(struct pt_regs *ctx)
 			.ret = 0,
 			.name = "fd_install",
 			.hash = 0,
+			.flags = 0,
 		},
 		.fd = fd_i.fd,
 		.ino = i_ino,
