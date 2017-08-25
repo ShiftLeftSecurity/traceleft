@@ -67,6 +67,11 @@ when the process exits.
 * `dup2` and `dup3` duplicate a file descriptor but don't call `fd_install`, so
   we'll also miss the path of events using the duplicated file descriptors.
 
+* Since we're tracing internal kernel functions and we access internal kernel
+  structures, these can change at any time. This means we need to compile the
+  handlers for the particular kernel version where they will run. This is not
+  yet implemented, we compile with whatever the Fedora 26 Docker image ships.
+
 ## Alternative designs considered
 
 Before choosing the implementation described above, we've considered several
