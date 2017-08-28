@@ -291,13 +291,13 @@ int kretprobe__fd_install(struct pt_regs *ctx)
 	}
 	bpf_map_delete_elem(&fdinstall_args, &pid);
 
-	fd_install_t fd_i;
+	fd_install_t fd_i = {};
 	bpf_probe_read(&fd_i, sizeof(fd_i), fd_ip);
 
-	struct inode *f_inode;
-	unsigned long i_ino;
+	struct inode *f_inode = NULL;
+	unsigned long i_ino = 0;
 	struct super_block *sb = NULL;
-	dev_t s_dev;
+	dev_t s_dev = 0;
 
 	bpf_probe_read(&f_inode, sizeof(f_inode), &fd_i.file->f_inode);
 	bpf_probe_read(&i_ino, sizeof(i_ino), &f_inode->i_ino);

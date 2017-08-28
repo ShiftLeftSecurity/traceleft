@@ -68,8 +68,8 @@ int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 		return 0;
 	}
 
-	u16 lport, dport;
-	u32 net_ns_inum;
+	u16 lport = 0, dport = 0;
+	u32 net_ns_inum = 0;
 
 	lport = 0;
 	dport = 0;
@@ -78,7 +78,7 @@ int kprobe__handle_inet_csk_accept(struct pt_regs *ctx)
 	bpf_probe_read(&lport, sizeof(lport), &skp->__sk_common.skc_num);
 
 #ifdef CONFIG_NET_NS
-	possible_net_t skc_net;
+	possible_net_t skc_net = {};
 	bpf_probe_read(&skc_net, sizeof(skc_net), &skp->__sk_common.skc_net);
 	bpf_probe_read(&net_ns_inum, sizeof(net_ns_inum), &skc_net.net->ns.inum);
 #else
