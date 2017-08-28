@@ -44,7 +44,7 @@ static int read_tuple_v4(tuple_v4_t *tup, struct sock *skp)
 {
 	u32 saddr = 0, daddr = 0, net_ns_inum = 0;
 	u16 sport = 0, dport = 0;
-	possible_net_t skc_net;
+	possible_net_t skc_net = {};
 
 	bpf_probe_read(&saddr, sizeof(saddr), &skp->__sk_common.skc_rcv_saddr);
 	bpf_probe_read(&daddr, sizeof(daddr), &skp->__sk_common.skc_daddr);
@@ -79,7 +79,7 @@ static int read_tuple_v6(tuple_v6_t *tup, struct sock *skp)
 	u32 saddr[4] = {}, daddr[4] = {};
 	u32 net_ns_inum = 0;
 	u16 sport = 0, dport = 0;
-	possible_net_t skc_net;
+	possible_net_t skc_net = {};
 
 	bpf_probe_read(&saddr, sizeof(saddr), skp->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr32);
 	bpf_probe_read(&daddr, sizeof(daddr), skp->__sk_common.skc_v6_daddr.in6_u.u6_addr32);

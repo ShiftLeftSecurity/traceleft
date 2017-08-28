@@ -59,8 +59,8 @@ int kprobe__handle_tcp_close(struct pt_regs *ctx)
 	u32 cpu = bpf_get_smp_processor_id();
 	u64 pid = bpf_get_current_pid_tgid();
 
-	struct sock *skp;
-	u8 oldstate;
+	struct sock *skp = NULL;
+	u8 oldstate = 0;
 
 	skp = (struct sock *) PT_REGS_PARM1(ctx);
 	// Read previous state and don't record events for connections
