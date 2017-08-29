@@ -266,6 +266,7 @@ type FchmodEvent struct {
 
 type FchmodatEvent struct {
 	Dfd      int64
+	DfdPath  string
 	Filename [256]byte
 	Mode     uint64
 }
@@ -279,6 +280,7 @@ type FchownEvent struct {
 
 type FchownatEvent struct {
 	Dfd      int64
+	DfdPath  string
 	Filename [256]byte
 	User     uint32
 	Group    uint32
@@ -292,6 +294,7 @@ type MkdirEvent struct {
 
 type MkdiratEvent struct {
 	Dfd      int64
+	DfdPath  string
 	Pathname [256]byte
 	Mode     uint64
 }
@@ -383,7 +386,7 @@ func (e FchmodatEvent) String(ret int64) string {
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
-	return fmt.Sprintf("Dfd %d Filename %q Mode %d ", e.Dfd, bufferGo, e.Mode)
+	return fmt.Sprintf("Dfd %d<%s> Filename %q Mode %d ", e.Dfd, e.DfdPath, bufferGo, e.Mode)
 }
 
 func (e FchownEvent) String(ret int64) string {
@@ -395,7 +398,7 @@ func (e FchownatEvent) String(ret int64) string {
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
-	return fmt.Sprintf("Dfd %d Filename %q User %d Group %d Flag %d ", e.Dfd, bufferGo, e.User, e.Group, e.Flag)
+	return fmt.Sprintf("Dfd %d<%s> Filename %q User %d Group %d Flag %d ", e.Dfd, e.DfdPath, bufferGo, e.User, e.Group, e.Flag)
 }
 
 func (e MkdirEvent) String(ret int64) string {
@@ -411,7 +414,7 @@ func (e MkdiratEvent) String(ret int64) string {
 	length := C.int(0)
 	length = C.int(bufLen(e.Pathname))
 	bufferGo := C.GoStringN(buffer, length)
-	return fmt.Sprintf("Dfd %d Pathname %q Mode %d ", e.Dfd, bufferGo, e.Mode)
+	return fmt.Sprintf("Dfd %d<%s> Pathname %q Mode %d ", e.Dfd, e.DfdPath, bufferGo, e.Mode)
 }
 
 func (e OpenEvent) String(ret int64) string {
@@ -517,6 +520,26 @@ func GetStruct(ce *CommonEvent, ctx Context, buf *bytes.Buffer) (Event, error) {
 	case "fchmodat":
 		ev := FchmodatEvent{}
 		ev.Dfd = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+		fileName := "unknown"
+		info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(ev.Dfd))
+		if ok {
+			var stat syscall.Stat_t
+			path := filepath.Join("/proc", strconv.FormatInt(int64(ce.Pid), 10), "root", info.Path)
+			err := syscall.Stat(path, &stat)
+			if err != nil {
+				if err == syscall.ENOENT {
+					// the file doesn't exist anymore, it's probably "info.Path"
+					// but we're not sure
+					fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+				}
+			}
+			if info.Ino == stat.Ino &&
+				info.Major == stat.Dev>>8 &&
+				info.Minor == stat.Dev&0xff {
+				fileName = info.Path
+			}
+		}
+		ev.DfdPath = fileName
 		copy(ev.Filename[:], buf.Next(256))
 		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
 
@@ -553,6 +576,26 @@ func GetStruct(ce *CommonEvent, ctx Context, buf *bytes.Buffer) (Event, error) {
 	case "fchownat":
 		ev := FchownatEvent{}
 		ev.Dfd = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+		fileName := "unknown"
+		info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(ev.Dfd))
+		if ok {
+			var stat syscall.Stat_t
+			path := filepath.Join("/proc", strconv.FormatInt(int64(ce.Pid), 10), "root", info.Path)
+			err := syscall.Stat(path, &stat)
+			if err != nil {
+				if err == syscall.ENOENT {
+					// the file doesn't exist anymore, it's probably "info.Path"
+					// but we're not sure
+					fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+				}
+			}
+			if info.Ino == stat.Ino &&
+				info.Major == stat.Dev>>8 &&
+				info.Minor == stat.Dev&0xff {
+				fileName = info.Path
+			}
+		}
+		ev.DfdPath = fileName
 		copy(ev.Filename[:], buf.Next(256))
 		ev.User = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
 		ev.Group = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
@@ -570,6 +613,26 @@ func GetStruct(ce *CommonEvent, ctx Context, buf *bytes.Buffer) (Event, error) {
 	case "mkdirat":
 		ev := MkdiratEvent{}
 		ev.Dfd = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+		fileName := "unknown"
+		info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(ev.Dfd))
+		if ok {
+			var stat syscall.Stat_t
+			path := filepath.Join("/proc", strconv.FormatInt(int64(ce.Pid), 10), "root", info.Path)
+			err := syscall.Stat(path, &stat)
+			if err != nil {
+				if err == syscall.ENOENT {
+					// the file doesn't exist anymore, it's probably "info.Path"
+					// but we're not sure
+					fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+				}
+			}
+			if info.Ino == stat.Ino &&
+				info.Major == stat.Dev>>8 &&
+				info.Minor == stat.Dev&0xff {
+				fileName = info.Path
+			}
+		}
+		ev.DfdPath = fileName
 		copy(ev.Pathname[:], buf.Next(256))
 		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
 

@@ -697,7 +697,7 @@ func (e {{ .Name }}) String(ret int64) string {
 	return fmt.Sprintf("{{- range $index, $param := .Params -}}
 	{{ $param.Name }}
 	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") (eq $param.Type "uint32") }} %d{{else}} %q{{ end -}}
-	{{- if eq $param.Name "Fd" -}}
+	{{- if or (eq $param.Name "Fd") (eq $param.Name "Dfd") -}}
 	<%s> {{/* space */}}
 	{{- else }} {{ end -}}
 	{{- end }}", {{/* space */}}
@@ -708,7 +708,7 @@ func (e {{ .Name }}) String(ret int64) string {
 			{{- else -}}
 			 e.{{ $param.Name }}
 		{{- end -}}
-		{{- if eq $param.Name "Fd" -}}
+		{{- if or (eq $param.Name "Fd") (eq $param.Name "Dfd") -}}
 			, e.{{ $param.Name }}Path
 		{{- end -}}
 	{{- end -}})
@@ -981,7 +981,7 @@ func parseLine(l string, idx int) (*Param, *Param, *Param, error) {
 	goParam.Type = goTypeConversions[mp["type"]]
 	goParam.Suffix = ""
 	goParam.Position = 0
-	if goParam.Name == "Fd" {
+	if goParam.Name == "Fd" || goParam.Name == "Dfd" {
 		goParam.NeedsPath = true
 	}
 
