@@ -40,7 +40,7 @@ METRICS_DIR := metrics
 METRICS_TARGETS := $(patsubst $(METRICS_DIR)/%.proto,$(METRICS_DIR)/%.pb.go,$(wildcard $(METRICS_DIR)/*.proto))
 
 .PHONY: all
-all: protogen handlers pregen traceleft
+all: handlers pregen traceleft
 
 #
 # Docker builder image
