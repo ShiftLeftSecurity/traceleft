@@ -153,13 +153,13 @@ func handleEvent(data *[]byte) {
 		return
 	}
 	msg := fmt.Sprintf("event %s pid %d return value %d ", commonEvent.Name, commonEvent.Pid, commonEvent.Ret)
-	event, err := tracer.GetStruct(commonEvent.Name, buf)
+	event, err := tracer.GetStruct(commonEvent, ctx, buf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get %q struct: %v\n", commonEvent.Name, err)
 		return
 	}
 
-	eventStr := event.String(commonEvent.Ret, ctx, *commonEvent)
+	eventStr := event.String(commonEvent.Ret)
 	if commonEvent.Name == "fd_install" {
 		return
 	}

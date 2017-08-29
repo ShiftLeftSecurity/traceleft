@@ -230,18 +230,7 @@ type UserMsghdr struct {
 	MsgFlags      uint64
 }
 
-func (e FileEvent) String(ret int64, ctx Context, ce CommonEvent) string {
-	name, err := procLookupPath(uint32(ce.Pid), uint32(e.Fd))
-	if err != nil {
-		name = "unknown"
-	}
-
-	fdInfo := FdInfo{Path: name, Ino: e.Ino, Major: e.Major, Minor: e.Minor}
-
-	// ignore entries not backed by files, like sockets or anonymous inodes
-	if strings.HasPrefix(fdInfo.Path, "/") {
-		ctx.Fds.Put(uint32(ce.Pid), uint32(e.Fd), fdInfo)
-	}
+func (e FileEvent) String(ret int64) string {
 
 	return fmt.Sprintf("Fd %d ", e.Fd)
 }
@@ -265,12 +254,14 @@ type ChownEvent struct {
 }
 
 type CloseEvent struct {
-	Fd uint64
+	Fd     uint64
+	FdPath string
 }
 
 type FchmodEvent struct {
-	Fd   uint64
-	Mode uint64
+	Fd     uint64
+	FdPath string
+	Mode   uint64
 }
 
 type FchmodatEvent struct {
@@ -280,9 +271,10 @@ type FchmodatEvent struct {
 }
 
 type FchownEvent struct {
-	Fd    uint64
-	User  uint32
-	Group uint32
+	Fd     uint64
+	FdPath string
+	User   uint32
+	Group  uint32
 }
 
 type FchownatEvent struct {
@@ -311,15 +303,17 @@ type OpenEvent struct {
 }
 
 type ReadEvent struct {
-	Fd    uint64
-	Buf   [256]byte
-	Count int64
+	Fd     uint64
+	FdPath string
+	Buf    [256]byte
+	Count  int64
 }
 
 type WriteEvent struct {
-	Fd    uint64
-	Buf   [256]byte
-	Count int64
+	Fd     uint64
+	FdPath string
+	Buf    [256]byte
+	Count  int64
 }
 
 // helpers for events
@@ -342,7 +336,7 @@ func bufLen(buf [256]byte) int {
 }
 
 type Event interface {
-	String(ret int64, ctx Context, ce CommonEvent) string
+	String(ret int64) string
 	Metric() *Metric
 }
 
@@ -352,7 +346,7 @@ func procLookupPath(pid, fd uint32) (string, error) {
 
 type DefaultEvent struct{}
 
-func (w DefaultEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+func (w DefaultEvent) String(ret int64) string {
 	return ""
 }
 
@@ -360,209 +354,102 @@ func (w DefaultEvent) Metric() *Metric {
 	return nil
 }
 
-func (e ChmodEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e ChmodEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
-
 	return fmt.Sprintf("Filename %q Mode %d ", bufferGo, e.Mode)
 }
 
-func (e ChownEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e ChownEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
-
 	return fmt.Sprintf("Filename %q User %d Group %d ", bufferGo, e.User, e.Group)
 }
 
-func (e CloseEvent) String(ret int64, ctx Context, ce CommonEvent) string {
-	fileName := "unknown"
-	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
-	if ok {
-		var stat syscall.Stat_t
-		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
-		err := syscall.Stat(path, &stat)
-		if err != nil {
-			if err == syscall.ENOENT {
-				// the file doesn't exist anymore, it's probably "info.Path"
-				// but we're not sure
-				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
-			}
-		}
-		if info.Ino == stat.Ino &&
-			info.Major == stat.Dev>>8 &&
-			info.Minor == stat.Dev&0xff {
-			fileName = info.Path
-		}
-	}
-	ctx.Fds.Delete(uint32(ce.Pid), uint32(e.Fd))
-
-	return fmt.Sprintf("Fd %d<%s> ", e.Fd, fileName)
+func (e CloseEvent) String(ret int64) string {
+	return fmt.Sprintf("Fd %d<%s> ", e.Fd, e.FdPath)
 }
 
-func (e FchmodEvent) String(ret int64, ctx Context, ce CommonEvent) string {
-	fileName := "unknown"
-	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
-	if ok {
-		var stat syscall.Stat_t
-		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
-		err := syscall.Stat(path, &stat)
-		if err != nil {
-			if err == syscall.ENOENT {
-				// the file doesn't exist anymore, it's probably "info.Path"
-				// but we're not sure
-				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
-			}
-		}
-		if info.Ino == stat.Ino &&
-			info.Major == stat.Dev>>8 &&
-			info.Minor == stat.Dev&0xff {
-			fileName = info.Path
-		}
-	}
-
-	return fmt.Sprintf("Fd %d<%s> Mode %d ", e.Fd, fileName, e.Mode)
+func (e FchmodEvent) String(ret int64) string {
+	return fmt.Sprintf("Fd %d<%s> Mode %d ", e.Fd, e.FdPath, e.Mode)
 }
 
-func (e FchmodatEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e FchmodatEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
-
 	return fmt.Sprintf("Dfd %d Filename %q Mode %d ", e.Dfd, bufferGo, e.Mode)
 }
 
-func (e FchownEvent) String(ret int64, ctx Context, ce CommonEvent) string {
-	fileName := "unknown"
-	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
-	if ok {
-		var stat syscall.Stat_t
-		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
-		err := syscall.Stat(path, &stat)
-		if err != nil {
-			if err == syscall.ENOENT {
-				// the file doesn't exist anymore, it's probably "info.Path"
-				// but we're not sure
-				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
-			}
-		}
-		if info.Ino == stat.Ino &&
-			info.Major == stat.Dev>>8 &&
-			info.Minor == stat.Dev&0xff {
-			fileName = info.Path
-		}
-	}
-
-	return fmt.Sprintf("Fd %d<%s> User %d Group %d ", e.Fd, fileName, e.User, e.Group)
+func (e FchownEvent) String(ret int64) string {
+	return fmt.Sprintf("Fd %d<%s> User %d Group %d ", e.Fd, e.FdPath, e.User, e.Group)
 }
 
-func (e FchownatEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e FchownatEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
-
 	return fmt.Sprintf("Dfd %d Filename %q User %d Group %d Flag %d ", e.Dfd, bufferGo, e.User, e.Group, e.Flag)
 }
 
-func (e MkdirEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e MkdirEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
 	length := C.int(0)
 	length = C.int(bufLen(e.Pathname))
 	bufferGo := C.GoStringN(buffer, length)
-
 	return fmt.Sprintf("Pathname %q Mode %d ", bufferGo, e.Mode)
 }
 
-func (e MkdiratEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e MkdiratEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
 	length := C.int(0)
 	length = C.int(bufLen(e.Pathname))
 	bufferGo := C.GoStringN(buffer, length)
-
 	return fmt.Sprintf("Dfd %d Pathname %q Mode %d ", e.Dfd, bufferGo, e.Mode)
 }
 
-func (e OpenEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e OpenEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
-
 	return fmt.Sprintf("Filename %q Flags %d Mode %d ", bufferGo, e.Flags, e.Mode)
 }
 
-func (e ReadEvent) String(ret int64, ctx Context, ce CommonEvent) string {
-	fileName := "unknown"
-	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
-	if ok {
-		var stat syscall.Stat_t
-		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
-		err := syscall.Stat(path, &stat)
-		if err != nil {
-			if err == syscall.ENOENT {
-				// the file doesn't exist anymore, it's probably "info.Path"
-				// but we're not sure
-				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
-			}
-		}
-		if info.Ino == stat.Ino &&
-			info.Major == stat.Dev>>8 &&
-			info.Minor == stat.Dev&0xff {
-			fileName = info.Path
-		}
-	}
+func (e ReadEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Buf))
 	length := C.int(0)
 	if ret > 0 {
 		length = C.int(min(int(ret), len(e.Buf)))
 	}
 	bufferGo := C.GoStringN(buffer, length)
-
-	return fmt.Sprintf("Fd %d<%s> Buf %q Count %d ", e.Fd, fileName, bufferGo, e.Count)
+	return fmt.Sprintf("Fd %d<%s> Buf %q Count %d ", e.Fd, e.FdPath, bufferGo, e.Count)
 }
 
-func (e WriteEvent) String(ret int64, ctx Context, ce CommonEvent) string {
-	fileName := "unknown"
-	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
-	if ok {
-		var stat syscall.Stat_t
-		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
-		err := syscall.Stat(path, &stat)
-		if err != nil {
-			if err == syscall.ENOENT {
-				// the file doesn't exist anymore, it's probably "info.Path"
-				// but we're not sure
-				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
-			}
-		}
-		if info.Ino == stat.Ino &&
-			info.Major == stat.Dev>>8 &&
-			info.Minor == stat.Dev&0xff {
-			fileName = info.Path
-		}
-	}
+func (e WriteEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Buf))
 	length := C.int(0)
 	if ret > 0 {
 		length = C.int(min(int(ret), len(e.Buf)))
 	}
 	bufferGo := C.GoStringN(buffer, length)
-
-	return fmt.Sprintf("Fd %d<%s> Buf %q Count %d ", e.Fd, fileName, bufferGo, e.Count)
+	return fmt.Sprintf("Fd %d<%s> Buf %q Count %d ", e.Fd, e.FdPath, bufferGo, e.Count)
 }
 
-func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
-	switch eventName {
+func GetStruct(ce *CommonEvent, ctx Context, buf *bytes.Buffer) (Event, error) {
+	switch ce.Name {
 
 	case "chmod":
 		ev := ChmodEvent{}
 		copy(ev.Filename[:], buf.Next(256))
 		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+
 		return ev, nil
 
 	case "chown":
@@ -570,17 +457,61 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
 		copy(ev.Filename[:], buf.Next(256))
 		ev.User = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
 		ev.Group = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
+
 		return ev, nil
 
 	case "close":
 		ev := CloseEvent{}
 		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+		fileName := "unknown"
+		info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(ev.Fd))
+		if ok {
+			var stat syscall.Stat_t
+			path := filepath.Join("/proc", strconv.FormatInt(int64(ce.Pid), 10), "root", info.Path)
+			err := syscall.Stat(path, &stat)
+			if err != nil {
+				if err == syscall.ENOENT {
+					// the file doesn't exist anymore, it's probably "info.Path"
+					// but we're not sure
+					fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+				}
+			}
+			if info.Ino == stat.Ino &&
+				info.Major == stat.Dev>>8 &&
+				info.Minor == stat.Dev&0xff {
+				fileName = info.Path
+			}
+		}
+		ev.FdPath = fileName
+		ctx.Fds.Delete(uint32(ce.Pid), uint32(ev.Fd))
+
 		return ev, nil
 
 	case "fchmod":
 		ev := FchmodEvent{}
 		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+		fileName := "unknown"
+		info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(ev.Fd))
+		if ok {
+			var stat syscall.Stat_t
+			path := filepath.Join("/proc", strconv.FormatInt(int64(ce.Pid), 10), "root", info.Path)
+			err := syscall.Stat(path, &stat)
+			if err != nil {
+				if err == syscall.ENOENT {
+					// the file doesn't exist anymore, it's probably "info.Path"
+					// but we're not sure
+					fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+				}
+			}
+			if info.Ino == stat.Ino &&
+				info.Major == stat.Dev>>8 &&
+				info.Minor == stat.Dev&0xff {
+				fileName = info.Path
+			}
+		}
+		ev.FdPath = fileName
 		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+
 		return ev, nil
 
 	case "fchmodat":
@@ -588,13 +519,35 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
 		ev.Dfd = int64(binary.LittleEndian.Uint64(buf.Next(8)))
 		copy(ev.Filename[:], buf.Next(256))
 		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+
 		return ev, nil
 
 	case "fchown":
 		ev := FchownEvent{}
 		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+		fileName := "unknown"
+		info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(ev.Fd))
+		if ok {
+			var stat syscall.Stat_t
+			path := filepath.Join("/proc", strconv.FormatInt(int64(ce.Pid), 10), "root", info.Path)
+			err := syscall.Stat(path, &stat)
+			if err != nil {
+				if err == syscall.ENOENT {
+					// the file doesn't exist anymore, it's probably "info.Path"
+					// but we're not sure
+					fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+				}
+			}
+			if info.Ino == stat.Ino &&
+				info.Major == stat.Dev>>8 &&
+				info.Minor == stat.Dev&0xff {
+				fileName = info.Path
+			}
+		}
+		ev.FdPath = fileName
 		ev.User = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
 		ev.Group = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
+
 		return ev, nil
 
 	case "fchownat":
@@ -604,12 +557,14 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
 		ev.User = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
 		ev.Group = uint32(binary.LittleEndian.Uint32(buf.Next(4)))
 		ev.Flag = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+
 		return ev, nil
 
 	case "mkdir":
 		ev := MkdirEvent{}
 		copy(ev.Pathname[:], buf.Next(256))
 		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+
 		return ev, nil
 
 	case "mkdirat":
@@ -617,6 +572,7 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
 		ev.Dfd = int64(binary.LittleEndian.Uint64(buf.Next(8)))
 		copy(ev.Pathname[:], buf.Next(256))
 		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+
 		return ev, nil
 
 	case "open":
@@ -624,20 +580,63 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
 		copy(ev.Filename[:], buf.Next(256))
 		ev.Flags = int64(binary.LittleEndian.Uint64(buf.Next(8)))
 		ev.Mode = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+
 		return ev, nil
 
 	case "read":
 		ev := ReadEvent{}
 		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+		fileName := "unknown"
+		info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(ev.Fd))
+		if ok {
+			var stat syscall.Stat_t
+			path := filepath.Join("/proc", strconv.FormatInt(int64(ce.Pid), 10), "root", info.Path)
+			err := syscall.Stat(path, &stat)
+			if err != nil {
+				if err == syscall.ENOENT {
+					// the file doesn't exist anymore, it's probably "info.Path"
+					// but we're not sure
+					fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+				}
+			}
+			if info.Ino == stat.Ino &&
+				info.Major == stat.Dev>>8 &&
+				info.Minor == stat.Dev&0xff {
+				fileName = info.Path
+			}
+		}
+		ev.FdPath = fileName
 		copy(ev.Buf[:], buf.Next(256))
 		ev.Count = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+
 		return ev, nil
 
 	case "write":
 		ev := WriteEvent{}
 		ev.Fd = uint64(binary.LittleEndian.Uint64(buf.Next(8)))
+		fileName := "unknown"
+		info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(ev.Fd))
+		if ok {
+			var stat syscall.Stat_t
+			path := filepath.Join("/proc", strconv.FormatInt(int64(ce.Pid), 10), "root", info.Path)
+			err := syscall.Stat(path, &stat)
+			if err != nil {
+				if err == syscall.ENOENT {
+					// the file doesn't exist anymore, it's probably "info.Path"
+					// but we're not sure
+					fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+				}
+			}
+			if info.Ino == stat.Ino &&
+				info.Major == stat.Dev>>8 &&
+				info.Minor == stat.Dev&0xff {
+				fileName = info.Path
+			}
+		}
+		ev.FdPath = fileName
 		copy(ev.Buf[:], buf.Next(256))
 		ev.Count = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+
 		return ev, nil
 
 	// file events
@@ -646,6 +645,18 @@ func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
 		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
 			return nil, err
 		}
+		name, err := procLookupPath(uint32(ce.Pid), uint32(ev.Fd))
+		if err != nil {
+			name = "unknown"
+		}
+
+		fdInfo := FdInfo{Path: name, Ino: ev.Ino, Major: ev.Major, Minor: ev.Minor}
+
+		// ignore entries not backed by files, like sockets or anonymous inodes
+		if strings.HasPrefix(fdInfo.Path, "/") {
+			ctx.Fds.Put(uint32(ce.Pid), uint32(ev.Fd), fdInfo)
+		}
+
 		return ev, nil
 	// network events
 	case "close_v4":
@@ -697,12 +708,12 @@ type ConnectV6Event struct {
 
 // network events string functions
 
-func (e ConnectV4Event) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e ConnectV4Event) String(ret int64) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa(e.Saddr),
 		inet_ntoa(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
 
-func (e ConnectV6Event) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e ConnectV6Event) String(ret int64) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa6(e.Saddr),
 		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
 }

@@ -75,7 +75,6 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 	} else {
 		go func() {
 			for event := range eventChan {
-				evString := event.Event.String(event.Common.Ret, ctx, event.Common)
 				if event.Common.Name == "fd_install" {
 					continue
 				}
@@ -90,6 +89,7 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 					errorStr = "[incomplete]"
 				}
 
+				evString := event.Event.String(event.Common.Ret)
 				fmt.Printf("name %s pid %d program id %d return value %d hash %d %s%s%s\n",
 					event.Common.Name, event.Common.Pid, event.Common.ProgramID, event.Common.Ret, event.Common.Hash, evString, containerStr, errorStr)
 			}
@@ -149,7 +149,7 @@ func handleEvent(data *[]byte) {
 		fmt.Fprintf(os.Stderr, "Failed to decode received data: %v\n", err)
 		return
 	}
-	event, err := tracer.GetStruct(commonEvent.Name, buf)
+	event, err := tracer.GetStruct(commonEvent, ctx, buf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get event struct: %v\n", err)
 		return

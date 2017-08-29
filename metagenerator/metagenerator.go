@@ -257,18 +257,7 @@ type UserMsghdr struct {
 	MsgFlags      uint64
 }
 
-func (e FileEvent) String(ret int64, ctx Context, ce CommonEvent) string {
-	name, err := procLookupPath(uint32(ce.Pid), uint32(e.Fd))
-	if err != nil {
-		name = "unknown"
-	}
-
-	fdInfo := FdInfo{Path: name, Ino: e.Ino, Major: e.Major, Minor: e.Minor}
-
-	// ignore entries not backed by files, like sockets or anonymous inodes
-	if strings.HasPrefix(fdInfo.Path, "/") {
-		ctx.Fds.Put(uint32(ce.Pid), uint32(e.Fd), fdInfo)
-	}
+func (e FileEvent) String(ret int64) string {
 
 	return fmt.Sprintf("Fd %d ", e.Fd)
 }
@@ -568,12 +557,12 @@ type ConnectV6Event struct {
 
 // network events string functions
 
-func (e ConnectV4Event) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e ConnectV4Event) String(ret int64) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa(e.Saddr),
 		inet_ntoa(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
 
-func (e ConnectV6Event) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e ConnectV6Event) String(ret int64) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa6(e.Saddr),
 		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
@@ -628,6 +617,9 @@ const goStructTemplate = `
 type {{ .Name }} struct {
 	{{- range $index, $param := .Params }}
 	{{ $param.Name }} {{ $param.Type }}
+	{{- if (eq $param.NeedsPath true) }}
+	{{ $param.Name }}Path string
+	{{- end }}
 	{{- end }}
 }
 `
@@ -665,7 +657,7 @@ func bufLen(buf [256]byte) int {
 }
 
 type Event interface {
-	String(ret int64, ctx Context, ce CommonEvent) string
+	String(ret int64) string
 	Metric() *Metric
 }
 
@@ -675,7 +667,7 @@ func procLookupPath(pid, fd uint32) (string, error) {
 
 type DefaultEvent struct{}
 
-func (w DefaultEvent) String(ret int64, ctx Context, ce CommonEvent) string {
+func (w DefaultEvent) String(ret int64) string {
 	return ""
 }
 
@@ -686,7 +678,7 @@ func (w DefaultEvent) Metric() *Metric {
 
 // TODO: Use template functions for parameter types & names, make buffer len decision generic for other syscalls
 const eventStringsTemplate = `
-func (e {{ .Name }}) String(ret int64, ctx Context, ce CommonEvent) string {
+func (e {{ .Name }}) String(ret int64) string {
 	{{- $name := .Name }}
 	{{- range $index, $param := .Params }}
 		{{- if or (eq $param.Name "Buf") (eq $param.Name "Filename") (eq $param.Name "Pathname") }}
@@ -701,49 +693,23 @@ func (e {{ .Name }}) String(ret int64, ctx Context, ce CommonEvent) string {
 			{{- end}}
 	bufferGo := C.GoStringN(buffer, length)
 		{{- end }}
-		{{- if (eq $param.Name "Fd") }}
-	fileName := "unknown"
-	info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(e.Fd))
-	if ok {
-		var stat syscall.Stat_t
-		path := filepath.Join("/proc", strconv.FormatInt(ce.Pid, 10), "root", info.Path)
-		err := syscall.Stat(path, &stat)
-		if err != nil {
-			if err == syscall.ENOENT {
-				// the file doesn't exist anymore, it's probably "info.Path"
-				// but we're not sure
-				fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
-			}
-		}
-		if info.Ino == stat.Ino &&
-			info.Major == stat.Dev>>8 &&
-			info.Minor == stat.Dev&0xff {
-			fileName = info.Path
-		}
-	}
-		{{- end }}
 	{{- end }}
-
-	{{- if (eq $name "CloseEvent") }}
-	ctx.Fds.Delete(uint32(ce.Pid), uint32(e.Fd))
-	{{- end }}
-
 	return fmt.Sprintf("{{- range $index, $param := .Params -}}
 	{{ $param.Name }}
-	{{- if (eq $param.Name "Fd") }} %d<%s> {{else}}
-	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") (eq $param.Type "uint32") }} %d {{else}} %q {{ end -}}
-	{{- end }}
-	{{- end }}",
+	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") (eq $param.Type "uint32") }} %d{{else}} %q{{ end -}}
+	{{- if eq $param.Name "Fd" -}}
+	<%s> {{/* space */}}
+	{{- else }} {{ end -}}
+	{{- end }}", {{/* space */}}
 	{{- range $index, $param := .Params -}}
-		{{ if $index }},{{ end }}
-		{{- if (eq $param.Name "Fd") -}}
-			e.{{ $param.Name }}, fileName
-		{{- else }}
+		{{- if $index }}, {{ end }}
 		{{- if or (eq $param.Name "Buf") (eq $param.Name "Filename") (eq $param.Name "Pathname") -}}
 			 bufferGo
 			{{- else -}}
 			 e.{{ $param.Name }}
 		{{- end -}}
+		{{- if eq $param.Name "Fd" -}}
+			, e.{{ $param.Name }}Path
 		{{- end -}}
 	{{- end -}})
 }
@@ -766,8 +732,8 @@ func (e {{ .Syscall.Name }}) Metric() *Metric {
 `
 
 const getStructPreamble = `
-func GetStruct(eventName string, buf *bytes.Buffer) (Event, error) {
-	switch eventName {
+func GetStruct(ce *CommonEvent, ctx Context, buf *bytes.Buffer) (Event, error) {
+	switch ce.Name {
 `
 
 const getStructTemplate = `
@@ -781,7 +747,34 @@ const getStructTemplate = `
 			{{- else if or (eq $param.Type "uint64") (eq $param.Type "int64") }}
 		ev.{{ $param.Name }} = {{ $param.Type }}(binary.LittleEndian.Uint64(buf.Next(8)))
 			{{- end }}
+			{{- if (eq $param.NeedsPath true) }}
+		fileName := "unknown"
+		info, ok := ctx.Fds.Get(uint32(ce.Pid), uint32(ev.{{ $param.Name }}))
+		if ok {
+			var stat syscall.Stat_t
+			path := filepath.Join("/proc", strconv.FormatInt(int64(ce.Pid), 10), "root", info.Path)
+			err := syscall.Stat(path, &stat)
+			if err != nil {
+				if err == syscall.ENOENT {
+					// the file doesn't exist anymore, it's probably "info.Path"
+					// but we're not sure
+					fileName = fmt.Sprintf("[deleted] (%q)?", info.Path)
+				}
+			}
+			if info.Ino == stat.Ino &&
+				info.Major == stat.Dev>>8 &&
+				info.Minor == stat.Dev&0xff {
+				fileName = info.Path
+			}
+		}
+		ev.{{ $param.Name }}Path = fileName
 		{{- end }}
+		{{- end }}
+
+	{{- if (eq .Name "CloseEvent") }}
+		ctx.Fds.Delete(uint32(ce.Pid), uint32(ev.Fd))
+	{{- end }}
+
 		return ev, nil
 `
 
@@ -792,6 +785,18 @@ const getStructEpilogue = `
 		if err := binary.Read(buf, binary.LittleEndian, &ev); err != nil {
 			return nil, err
 		}
+		name, err := procLookupPath(uint32(ce.Pid), uint32(ev.Fd))
+		if err != nil {
+			name = "unknown"
+		}
+
+		fdInfo := FdInfo{Path: name, Ino: ev.Ino, Major: ev.Major, Minor: ev.Minor}
+
+		// ignore entries not backed by files, like sockets or anonymous inodes
+		if strings.HasPrefix(fdInfo.Path, "/") {
+			ctx.Fds.Put(uint32(ce.Pid), uint32(ev.Fd), fdInfo)
+		}
+
 		return ev, nil
 	// network events
 	case "close_v4":
@@ -889,10 +894,12 @@ message Metric {
 `
 
 type Param struct {
-	Position int
-	Name     string
-	Type     string
-	Suffix   string
+	Position  int
+	Name      string
+	Type      string
+	Suffix    string
+	HashFunc  string
+	NeedsPath bool `json:"needsPath"`
 }
 
 type Syscall struct {
@@ -974,6 +981,9 @@ func parseLine(l string, idx int) (*Param, *Param, *Param, error) {
 	goParam.Type = goTypeConversions[mp["type"]]
 	goParam.Suffix = ""
 	goParam.Position = 0
+	if goParam.Name == "Fd" {
+		goParam.NeedsPath = true
+	}
 
 	var cParam Param
 	cParam.Name = mp["name"]
