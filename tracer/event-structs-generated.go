@@ -231,8 +231,11 @@ type UserMsghdr struct {
 }
 
 func (e FileEvent) String(ret int64) string {
-
 	return fmt.Sprintf("Fd %d ", e.Fd)
+}
+
+func (e FileEvent) GetArgN(n int, ret int64) (string, error) {
+	return "", fmt.Errorf("FileEvent.GetArgN not implemented")
 }
 
 // FileEvent is not meant to be seen by the users
@@ -340,6 +343,7 @@ func bufLen(buf [256]byte) int {
 
 type Event interface {
 	String(ret int64) string
+	GetArgN(n int, ret int64) (string, error)
 	Metric() *Metric
 }
 
@@ -351,6 +355,10 @@ type DefaultEvent struct{}
 
 func (w DefaultEvent) String(ret int64) string {
 	return ""
+}
+
+func (e DefaultEvent) GetArgN(n int, ret int64) (string, error) {
+	return "", fmt.Errorf("DefaultEvent.GetArgN not implemented")
 }
 
 func (w DefaultEvent) Metric() *Metric {
@@ -365,6 +373,22 @@ func (e ChmodEvent) String(ret int64) string {
 	return fmt.Sprintf("Filename %q Mode %d ", bufferGo, e.Mode)
 }
 
+func (e ChmodEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Filename: type [256]byte
+		buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+		length := C.int(0)
+		length = C.int(bufLen(e.Filename))
+		bufferGo := C.GoStringN(buffer, length)
+		return bufferGo, nil
+	case 1: // Mode: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Mode)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event ChmodEvent does not have argument %d", n)
+	}
+}
+
 func (e ChownEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
@@ -373,12 +397,54 @@ func (e ChownEvent) String(ret int64) string {
 	return fmt.Sprintf("Filename %q User %d Group %d ", bufferGo, e.User, e.Group)
 }
 
+func (e ChownEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Filename: type [256]byte
+		buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+		length := C.int(0)
+		length = C.int(bufLen(e.Filename))
+		bufferGo := C.GoStringN(buffer, length)
+		return bufferGo, nil
+	case 1: // User: type uint32
+		bufferGo := fmt.Sprintf("%v", e.User)
+		return bufferGo, nil
+	case 2: // Group: type uint32
+		bufferGo := fmt.Sprintf("%v", e.Group)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event ChownEvent does not have argument %d", n)
+	}
+}
+
 func (e CloseEvent) String(ret int64) string {
 	return fmt.Sprintf("Fd %d<%s> ", e.Fd, e.FdPath)
 }
 
+func (e CloseEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Fd: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Fd)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event CloseEvent does not have argument %d", n)
+	}
+}
+
 func (e FchmodEvent) String(ret int64) string {
 	return fmt.Sprintf("Fd %d<%s> Mode %d ", e.Fd, e.FdPath, e.Mode)
+}
+
+func (e FchmodEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Fd: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Fd)
+		return bufferGo, nil
+	case 1: // Mode: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Mode)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event FchmodEvent does not have argument %d", n)
+	}
 }
 
 func (e FchmodatEvent) String(ret int64) string {
@@ -389,8 +455,43 @@ func (e FchmodatEvent) String(ret int64) string {
 	return fmt.Sprintf("Dfd %d<%s> Filename %q Mode %d ", e.Dfd, e.DfdPath, bufferGo, e.Mode)
 }
 
+func (e FchmodatEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Dfd: type int64
+		bufferGo := fmt.Sprintf("%v", e.Dfd)
+		return bufferGo, nil
+	case 1: // Filename: type [256]byte
+		buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+		length := C.int(0)
+		length = C.int(bufLen(e.Filename))
+		bufferGo := C.GoStringN(buffer, length)
+		return bufferGo, nil
+	case 2: // Mode: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Mode)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event FchmodatEvent does not have argument %d", n)
+	}
+}
+
 func (e FchownEvent) String(ret int64) string {
 	return fmt.Sprintf("Fd %d<%s> User %d Group %d ", e.Fd, e.FdPath, e.User, e.Group)
+}
+
+func (e FchownEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Fd: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Fd)
+		return bufferGo, nil
+	case 1: // User: type uint32
+		bufferGo := fmt.Sprintf("%v", e.User)
+		return bufferGo, nil
+	case 2: // Group: type uint32
+		bufferGo := fmt.Sprintf("%v", e.Group)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event FchownEvent does not have argument %d", n)
+	}
 }
 
 func (e FchownatEvent) String(ret int64) string {
@@ -401,12 +502,53 @@ func (e FchownatEvent) String(ret int64) string {
 	return fmt.Sprintf("Dfd %d<%s> Filename %q User %d Group %d Flag %d ", e.Dfd, e.DfdPath, bufferGo, e.User, e.Group, e.Flag)
 }
 
+func (e FchownatEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Dfd: type int64
+		bufferGo := fmt.Sprintf("%v", e.Dfd)
+		return bufferGo, nil
+	case 1: // Filename: type [256]byte
+		buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+		length := C.int(0)
+		length = C.int(bufLen(e.Filename))
+		bufferGo := C.GoStringN(buffer, length)
+		return bufferGo, nil
+	case 2: // User: type uint32
+		bufferGo := fmt.Sprintf("%v", e.User)
+		return bufferGo, nil
+	case 3: // Group: type uint32
+		bufferGo := fmt.Sprintf("%v", e.Group)
+		return bufferGo, nil
+	case 4: // Flag: type int64
+		bufferGo := fmt.Sprintf("%v", e.Flag)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event FchownatEvent does not have argument %d", n)
+	}
+}
+
 func (e MkdirEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
 	length := C.int(0)
 	length = C.int(bufLen(e.Pathname))
 	bufferGo := C.GoStringN(buffer, length)
 	return fmt.Sprintf("Pathname %q Mode %d ", bufferGo, e.Mode)
+}
+
+func (e MkdirEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Pathname: type [256]byte
+		buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
+		length := C.int(0)
+		length = C.int(bufLen(e.Pathname))
+		bufferGo := C.GoStringN(buffer, length)
+		return bufferGo, nil
+	case 1: // Mode: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Mode)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event MkdirEvent does not have argument %d", n)
+	}
 }
 
 func (e MkdiratEvent) String(ret int64) string {
@@ -417,12 +559,50 @@ func (e MkdiratEvent) String(ret int64) string {
 	return fmt.Sprintf("Dfd %d<%s> Pathname %q Mode %d ", e.Dfd, e.DfdPath, bufferGo, e.Mode)
 }
 
+func (e MkdiratEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Dfd: type int64
+		bufferGo := fmt.Sprintf("%v", e.Dfd)
+		return bufferGo, nil
+	case 1: // Pathname: type [256]byte
+		buffer := (*C.char)(unsafe.Pointer(&e.Pathname))
+		length := C.int(0)
+		length = C.int(bufLen(e.Pathname))
+		bufferGo := C.GoStringN(buffer, length)
+		return bufferGo, nil
+	case 2: // Mode: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Mode)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event MkdiratEvent does not have argument %d", n)
+	}
+}
+
 func (e OpenEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Filename))
 	length := C.int(0)
 	length = C.int(bufLen(e.Filename))
 	bufferGo := C.GoStringN(buffer, length)
 	return fmt.Sprintf("Filename %q Flags %d Mode %d ", bufferGo, e.Flags, e.Mode)
+}
+
+func (e OpenEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Filename: type [256]byte
+		buffer := (*C.char)(unsafe.Pointer(&e.Filename))
+		length := C.int(0)
+		length = C.int(bufLen(e.Filename))
+		bufferGo := C.GoStringN(buffer, length)
+		return bufferGo, nil
+	case 1: // Flags: type int64
+		bufferGo := fmt.Sprintf("%v", e.Flags)
+		return bufferGo, nil
+	case 2: // Mode: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Mode)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event OpenEvent does not have argument %d", n)
+	}
 }
 
 func (e ReadEvent) String(ret int64) string {
@@ -435,6 +615,27 @@ func (e ReadEvent) String(ret int64) string {
 	return fmt.Sprintf("Fd %d<%s> Buf %q Count %d ", e.Fd, e.FdPath, bufferGo, e.Count)
 }
 
+func (e ReadEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Fd: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Fd)
+		return bufferGo, nil
+	case 1: // Buf: type [256]byte
+		buffer := (*C.char)(unsafe.Pointer(&e.Buf))
+		length := C.int(0)
+		if ret > 0 {
+			length = C.int(min(int(ret), len(e.Buf)))
+		}
+		bufferGo := C.GoStringN(buffer, length)
+		return bufferGo, nil
+	case 2: // Count: type int64
+		bufferGo := fmt.Sprintf("%v", e.Count)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event ReadEvent does not have argument %d", n)
+	}
+}
+
 func (e WriteEvent) String(ret int64) string {
 	buffer := (*C.char)(unsafe.Pointer(&e.Buf))
 	length := C.int(0)
@@ -443,6 +644,27 @@ func (e WriteEvent) String(ret int64) string {
 	}
 	bufferGo := C.GoStringN(buffer, length)
 	return fmt.Sprintf("Fd %d<%s> Buf %q Count %d ", e.Fd, e.FdPath, bufferGo, e.Count)
+}
+
+func (e WriteEvent) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	case 0: // Fd: type uint64
+		bufferGo := fmt.Sprintf("%v", e.Fd)
+		return bufferGo, nil
+	case 1: // Buf: type [256]byte
+		buffer := (*C.char)(unsafe.Pointer(&e.Buf))
+		length := C.int(0)
+		if ret > 0 {
+			length = C.int(min(int(ret), len(e.Buf)))
+		}
+		bufferGo := C.GoStringN(buffer, length)
+		return bufferGo, nil
+	case 2: // Count: type int64
+		bufferGo := fmt.Sprintf("%v", e.Count)
+		return bufferGo, nil
+	default:
+		return "", fmt.Errorf("Event WriteEvent does not have argument %d", n)
+	}
 }
 
 func GetStruct(ce *CommonEvent, ctx Context, buf *bytes.Buffer) (Event, error) {
@@ -779,6 +1001,14 @@ func (e ConnectV4Event) String(ret int64) string {
 func (e ConnectV6Event) String(ret int64) string {
 	return fmt.Sprintf("Saddr %s Daddr %s Sport %d Dport %d Netns %d ", inet_ntoa6(e.Saddr),
 		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
+}
+
+func (e ConnectV4Event) GetArgN(n int, ret int64) (string, error) {
+	return "", fmt.Errorf("ConnectV4Event.GetArgN not implemented")
+}
+
+func (e ConnectV6Event) GetArgN(n int, ret int64) (string, error) {
+	return "", fmt.Errorf("ConnectV6Event.GetArgN not implemented")
 }
 
 func (e ConnectV4Event) Metric() *Metric {

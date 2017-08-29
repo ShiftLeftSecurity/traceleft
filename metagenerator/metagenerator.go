@@ -258,8 +258,11 @@ type UserMsghdr struct {
 }
 
 func (e FileEvent) String(ret int64) string {
-
 	return fmt.Sprintf("Fd %d ", e.Fd)
+}
+
+func (e FileEvent) GetArgN(n int, ret int64) (string, error) {
+	return "", fmt.Errorf("FileEvent.GetArgN not implemented")
 }
 
 // FileEvent is not meant to be seen by the users
@@ -567,6 +570,15 @@ func (e ConnectV6Event) String(ret int64) string {
 		inet_ntoa6(e.Daddr), e.Sport, e.Dport, e.Netns)
 }
 
+func (e ConnectV4Event) GetArgN(n int, ret int64) (string, error) {
+	return "", fmt.Errorf("ConnectV4Event.GetArgN not implemented")
+}
+
+func (e ConnectV6Event) GetArgN(n int, ret int64) (string, error) {
+	return "", fmt.Errorf("ConnectV6Event.GetArgN not implemented")
+}
+
+
 func (e ConnectV4Event) Metric() *Metric {
 	return &Metric{
 		ConnectV4Event: &ProtobufConnectV4Event{
@@ -658,6 +670,7 @@ func bufLen(buf [256]byte) int {
 
 type Event interface {
 	String(ret int64) string
+	GetArgN(n int, ret int64) (string, error)
 	Metric() *Metric
 }
 
@@ -669,6 +682,10 @@ type DefaultEvent struct{}
 
 func (w DefaultEvent) String(ret int64) string {
 	return ""
+}
+
+func (e DefaultEvent) GetArgN(n int, ret int64) (string, error) {
+	return "", fmt.Errorf("DefaultEvent.GetArgN not implemented")
 }
 
 func (w DefaultEvent) Metric() *Metric {
@@ -712,6 +729,31 @@ func (e {{ .Name }}) String(ret int64) string {
 			, e.{{ $param.Name }}Path
 		{{- end -}}
 	{{- end -}})
+}
+
+func (e {{ .Name }}) GetArgN(n int, ret int64) (string, error) {
+	switch n {
+	{{- range $index, $param := .Params }}
+	case {{ $index }}: // {{ $param.Name }}: type {{ $param.Type }}
+	{{- if or (eq $param.Type "uint64") (eq $param.Type "int64") (eq $param.Type "uint32") }}
+		bufferGo := fmt.Sprintf("%v", e.{{ $param.Name }})
+	{{- else }}
+		buffer := (*C.char)(unsafe.Pointer(&e.{{ $param.Name }}))
+		length := C.int(0)
+			{{- if or (eq $name "ReadEvent") (eq $name "WriteEvent") }}
+		if ret > 0 {
+			length = C.int(min(int(ret), len(e.{{ $param.Name }})))
+		}
+			{{- else}}
+		length = C.int(bufLen(e.{{ $param.Name }}))
+			{{- end}}
+		bufferGo := C.GoStringN(buffer, length)
+	{{- end }}
+		return bufferGo, nil
+	{{- end }}
+	default:
+		return "", fmt.Errorf("Event {{ .Name }} does not have argument %d", n)
+	}
 }
 `
 
