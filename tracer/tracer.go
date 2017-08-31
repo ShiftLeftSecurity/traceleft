@@ -87,8 +87,14 @@ func New(callback func(*[]byte), cacheSize int) (*Tracer, error) {
 		for {
 			select {
 			case <-stopChan:
+				// On stop, stopChan will be closed but the other channels will
+				// also be closed shortly after. The select{} has no priorities,
+				// therefore, the "ok" value must be checked below.
 				return
-			case data := <-channel:
+			case data, ok := <-channel:
+				if !ok {
+					return // see explanation above
+				}
 				callback(&data)
 			}
 		}
