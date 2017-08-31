@@ -2,7 +2,7 @@
 
 ## Overview
 
-Building all [traceleft components](overview.md) involves a set of ordered
+Building all [traceleft components](README.md) involves a set of ordered
 steps.
 
 ![traceleft-build-components](traceleft-build-components.png)
