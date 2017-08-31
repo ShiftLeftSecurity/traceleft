@@ -68,14 +68,15 @@ func timestamp(data *[]byte) uint64 {
 	return binary.LittleEndian.Uint64(*data)
 }
 
-func New(callback func(*[]byte), cacheSize int) (*Tracer, error) {
+func New(callback func(*[]byte), callbackLost func(uint64), cacheSize int) (*Tracer, error) {
 	p, err := probe.New(cacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("error loading probe: %v", err)
 	}
 
 	channel := make(chan []byte)
-	perfMap, err := elflib.InitPerfMap(p.BPFModule(), "events", channel, nil)
+	channelLost := make(chan uint64)
+	perfMap, err := elflib.InitPerfMap(p.BPFModule(), "events", channel, channelLost)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init events perf map: %v", err)
 	}
@@ -96,6 +97,11 @@ func New(callback func(*[]byte), cacheSize int) (*Tracer, error) {
 					return // see explanation above
 				}
 				callback(&data)
+			case lostCount, ok := <-channelLost:
+				if !ok {
+					return // see explanation above
+				}
+				callbackLost(lostCount)
 			}
 		}
 	}()
