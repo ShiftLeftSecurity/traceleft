@@ -110,7 +110,7 @@ func cmdTrace(cmd *cobra.Command, args []string) {
 		}()
 	}
 
-	tracer, err := tracer.New(handleEvent, handlerCacheSize)
+	tracer, err := tracer.New(handleEvent, handleLostEvent, handlerCacheSize)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
@@ -172,6 +172,10 @@ func handleEvent(data *[]byte) {
 		*commonEvent,
 		event,
 	}
+}
+
+func handleLostEvent(lostCount uint64) {
+	fmt.Fprintf(os.Stderr, "Lost %d events\n", lostCount)
 }
 
 func registerEvents(p *probe.Probe, events []Event) error {

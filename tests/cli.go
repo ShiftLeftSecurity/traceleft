@@ -180,6 +180,11 @@ func handleEvent(data *[]byte) {
 	}
 }
 
+func handleLostEvent(lostCount uint64) {
+	fmt.Printf("Lost %d events - aborting\n", lostCount)
+	os.Exit(1)
+}
+
 func main() {
 	flag.Parse()
 
@@ -202,7 +207,7 @@ func main() {
 		f.Close()
 	}
 
-	tracer, err := tracer.New(handleEvent, handlerCacheSize)
+	tracer, err := tracer.New(handleEvent, handleLostEvent, handlerCacheSize)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get tracer: %v\n", err)
 		os.Exit(1)
