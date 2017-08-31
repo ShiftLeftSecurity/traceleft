@@ -1,3 +1,4 @@
 trace 42 %PID% %BASEDIR%/battery/out/handle_network_tcp_v6_connect.bpf
 trace 42 0 %BASEDIR%/battery/out/handle_network_tcp_set_state.bpf
-sleep 4
+signal-fifo %FIFO%
+sleep 20

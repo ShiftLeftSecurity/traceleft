@@ -4,5 +4,6 @@
 
 stampwait $1
 
-(sleep 1 && echo "helo" | nc -4 -p 65529 localhost 65530) &
+(sleep 3 && echo "helo" | nc -4 -p 65529 localhost 65530) &
+cat "${2}"
 exec nc -4 -l -p 65530 >/dev/null 2>&1

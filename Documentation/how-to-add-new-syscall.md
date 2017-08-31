@@ -53,3 +53,6 @@ builds it before running the tests.
 
 All tests get the path to a "stampfile" as the first argument and must call
 `stampwait` as a first step.
+
+The second argument is the path to a fifo file which can be used to signal
+readiness from `tests/cli` to the test.

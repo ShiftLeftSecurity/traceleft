@@ -4,8 +4,8 @@ set -euo pipefail
 
 # We need root for some syscalls
 if [[ "$EUID" -ne 0 ]]; then
-  echo "Please run the tests as root"
-  exit
+  echo "Please run the tests as root" >&2
+  exit 1
 fi
 
 readonly testdir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -23,6 +23,8 @@ shift $((OPTIND-1))
 
 readonly tempdir=$(mktemp -d /tmp/traceleft-test-cli-XXXXXX)
 readonly stampfile="${tempdir}/stamp"
+readonly fifofile="${tempdir}/fifo"
+mkfifo "${fifofile}"
 outfile=${outfile:-${tempdir}/outfile}
 declare -r outfile
 outdir="/tmp/traceleft-trace-out"
@@ -62,14 +64,14 @@ for dir in "${testdir}"/*; do
         continue
     fi
 
-    "${testdir}/${testname}/${testname}" "${stampfile}" &
+    "${testdir}/${testname}/${testname}" "${stampfile}" "${fifofile}" &
     pid=$!
     disown
 
     status_line="Running ${testname} with PID: ${pid} "
     echo -n "${status_line}"
 
-    testcommands="$(sed -e "s|%PID%|$pid|g" -e "s|%BASEDIR%|${testdir}/../|g" "${testscript}")"
+    testcommands="$(sed -e "s|%PID%|${pid}|g" -e "s|%BASEDIR%|${testdir}/../|g" -e "s|%FIFO%|${fifofile}|g" "${testscript}")"
 
     # wait until the file is created by the test via stampwait()
     until [[ -f "${stampfile}" ]]; do sleep 1; done
