@@ -187,7 +187,7 @@
 			"importpath": "github.com/iovisor/gobpf/elf",
 			"repository": "https://github.com/iovisor/gobpf",
 			"vcs": "git",
-			"revision": "a5ce4a743fd5107b857b66a60162e1b22bc63de4",
+			"revision": "cd6567bc587733b0eeb4622ca3fdf4feac4e1c9a",
 			"branch": "master",
 			"path": "/elf",
 			"notests": true
