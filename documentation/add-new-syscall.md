@@ -1,6 +1,6 @@
-# How to add a new syscall
+# Add a New Syscall
 
-## 1. Update the "event specification"
+### 1. Update `config.json`
 
 `examples/config.json` contains the currently used specification example and
 defines the names of the syscall events to trace as well as their arguments
@@ -12,31 +12,46 @@ with
 * `suffix` (type suffix): e.g. `[256]` for a variable `char buf[256]` (optional)
 * `hashFunc`can be:
   * "string": hash until a NULL character that terminates the string; useful for paths
-  * "skip": do not hash this parameter at all; it is used for the read() or write() buffers
-  * "" (empty string, the default): hash, with a fixed size for the field
+  * "skip": do not hash this parameter at all; it is used for the `read()` or 
+  `write()` buffers
+  * "": (empty string, default): hash, with a fixed size for the field
 
-## 2. Add syscall to `consideredSyscalls`
+### 2. Add Syscall to `consideredSyscalls`
 
 `consideredSyscalls` is a currently hard coded list of syscalls in
 `metagenerator/metagenerator.go` for which to generate event structures and
-methods.
+methods. This can eventually evolve and the need for such a filter may not be
+necessary
 
-## 3. Update `trace_events.c` program sources
+### 3. Update `trace_events.c`
 
 * Add `progs` and `progs_ret` maps
 * Add a `kprobe` and `kretprobe` for the new syscall
 
-Best start with a copy of an existing map/kprobe pair.
+We can start with an existing map/kprobe pair in the file and use it 
+as a reference.
 
-## 3. Run `make metagen` to generate the event structures
+### 4. Generate the Event Structures
+
+```
+make metagen
+```
 
 A new `foo_event_t` gets added to `battery/event-structs-generated.h` etc.
 
-## 4. Run `make pregen` to build BPF programs
+### 5. Build BPF Programs
 
-## 5. Run `make traceleft` to build traceleft
+```
+make pregen
+```
 
-## 6. Add a test
+### 6. Build `traceleft` binary
+
+```
+make traceleft
+```
+
+### 7. Add a Test
 
 A test directory should have:
 

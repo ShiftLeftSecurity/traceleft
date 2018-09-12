@@ -1,8 +1,8 @@
 # Network Tracking
 
-Tracking network connections is handled specially by traceleft. The handlers
+Tracking network connections is handled specially by TraceLeft. The handlers
 are not generated, but handwritten, and we trace internal kernel functions, not
-syscalls.
+syscalls as high-level syscalls are not sufficient for such tracking
 
 We trace the following functions:
 
@@ -37,7 +37,7 @@ name connect_v6 pid 5513 program id 0 return value 0 Saddr ::1 Daddr ::1 Sport 3
 name accept_v6 pid 5512 program id 0 return value 0 Saddr ::1 Daddr ::1 Sport 8080 Dport 34646 Netns 4026531973
 ```
 
-## Kernel compatibility
+## Kernel Compatibility
 
 Since we're tracing internal kernel functions and we access internal kernel
 structures, these can change at any time. This means we need to compile the

@@ -1,8 +1,8 @@
-# traceleft profiling & performance
+# TraceLeft Profiling & Performance
 
-## pprof
+## `pprof`
 
-traceleft offers [HTTP endpoints with profiling information](https://golang.org/pkg/net/http/pprof/).
+TraceLeft offers [HTTP endpoints with profiling information](https://golang.org/pkg/net/http/pprof/).
 To enable them, use `--pprof-listen-addr=localhost:9090`.
 Then, you can access one of the profiling endpoint:
 
@@ -11,10 +11,10 @@ go tool pprof http://localhost:9090/debug/pprof/heap
 go tool pprof http://localhost:9090/debug/pprof/profile
 ```
 
-## eBPF performance
+## eBPF Performance
 
 eBPF programs run in the kernel and their CPU usage are not accounted in the
-traceleft process. This can be monitored with:
+`traceleft` process. This can be monitored with:
 
 ```bash
 sudo perf top
@@ -22,7 +22,7 @@ sudo perf top
 
 Then, look for `__bpf_prog_run`.
 
-## Simple performance test with nginx
+## Performance Tests with `nginx`
 
 First, start a nginx container
 
@@ -30,7 +30,7 @@ First, start a nginx container
 docker run -ti --net=host nginx
 ```
 
-Then, in a second terminal, trace the nginx worker process:
+Then, in a second terminal, trace the `nginx` worker process:
 
 ```
 sudo ./build/bin/traceleft trace --pprof-listen-addr=localhost:9090 \

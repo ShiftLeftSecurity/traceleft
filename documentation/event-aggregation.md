@@ -1,4 +1,4 @@
-# Event aggregation
+# Event Aggregation
 
 Because of the large amount of events, it is not possible to send all of them
 to a server. Instead, an aggregation spec specifies how to reduce that large
@@ -6,14 +6,14 @@ amount of data to a smaller set that can be sent.
 
 ## Traceleft API
 
-The CLI tool (cli/cmd/trace.go) gives an example how to use the API. The
+The CLI tool (`cli/cmd/trace.go`) gives an example how to use the API. The
 classic way to use the API is to have the tracer on one side getting the events
 and forwarding them through a Golang channel to the aggregator.
 
 The aggregator is created via `metrics.NewAggregator(...)`. The aggregator
 handles the events according to the aggregation spec defined below.
 
-## Aggregation spec
+## Aggregation Spec
 
 `examples/aggregator-spec.json`
 
@@ -56,33 +56,33 @@ handles the events according to the aggregation spec defined below.
 The aggregation spec can define several channels. Traceleft supports two kinds of
 channels:
 
-- "file": writing the events in a file in a text format
-- "grpc": send the events through a gRPC socket
+- `file`: writing the events in a file in a text format
+- `grpc`: send the events through a gRPC socket
 
 
-### Event filters
+### Event Filters
 
 The aggregation spec can define several event filters. Each event filter has:
 
-- a rule defining specifying which events it cares about
-- a processing function executed for each received
-- an output function defining what is reported to the channel and how
+- A rule defining specifying which events it cares about
+- A processing function executed for each received
+- An output function defining what is reported to the channel and how
 
 
-### Processing functions
+### Processing Functions
 
-Currently one processing function is defined: "sigma". It has the following
+Currently one processing function is defined: `sigma`. It has the following
 parameters:
 
-- "frequency": how many events to receive before passing an event to the output function
-- "threshold": currently unimplemented
+- `frequency`: how many events to receive before passing an event to the output function
+- `threshold`: currently unimplemented
 
-### Output functions
+### Output Functions
 
-Currently one output function is defined: "alerts\_per\_sec". It just sends one
+Currently one output function is defined: `alerts_per_sec`. It just sends one
 event per second with a counter.
 
-- "format": currently unimplemented.
+- `format`: currently unimplemented.
 
 ## Implementation
 
@@ -113,7 +113,7 @@ while true ; do echo -n > /tmp/a.txt ; done
 
 ## Limitations
 
-* Unimplemented yet:
+#### TODOs
   - The aggregation code should be rewritten to be more readable
   - File descriptors are not translated to paths on gRPC
   - The rule parsing and matching are not implemented yet. This is currently hard-coded.
