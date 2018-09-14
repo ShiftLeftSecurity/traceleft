@@ -16,6 +16,8 @@
  *
  */
 
+//go:generate protoc -I grpc_testing --go_out=plugins=grpc:grpc_testing grpc_testing/control.proto grpc_testing/messages.proto grpc_testing/payloads.proto grpc_testing/services.proto grpc_testing/stats.proto
+
 /*
 Package benchmark implements the building blocks to setup end-to-end gRPC benchmarks.
 */
@@ -32,9 +34,21 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	testpb "google.golang.org/grpc/benchmark/grpc_testing"
+	"google.golang.org/grpc/benchmark/latency"
 	"google.golang.org/grpc/benchmark/stats"
 	"google.golang.org/grpc/grpclog"
 )
+
+// AddOne add 1 to the features slice
+func AddOne(features []int, featuresMaxPosition []int) {
+	for i := len(features) - 1; i >= 0; i-- {
+		features[i] = (features[i] + 1)
+		if features[i]/featuresMaxPosition[i] == 0 {
+			break
+		}
+		features[i] = features[i] % featuresMaxPosition[i]
+	}
+}
 
 // Allows reuse of the same testpb.Payload object.
 func setPayload(p *testpb.Payload, t testpb.PayloadType, size int) {
@@ -51,7 +65,6 @@ func setPayload(p *testpb.Payload, t testpb.PayloadType, size int) {
 	}
 	p.Type = t
 	p.Body = body
-	return
 }
 
 func newPayload(t testpb.PayloadType, size int) *testpb.Payload {
@@ -122,9 +135,6 @@ func (s *byteBufServer) StreamingCall(stream testpb.BenchmarkService_StreamingCa
 
 // ServerInfo contains the information to create a gRPC benchmark server.
 type ServerInfo struct {
-	// Addr is the address of the server.
-	Addr string
-
 	// Type is the type of the server.
 	// It should be "protobuf" or "bytebuf".
 	Type string
@@ -133,15 +143,16 @@ type ServerInfo struct {
 	// For "protobuf", it's ignored.
 	// For "bytebuf", it should be an int representing response size.
 	Metadata interface{}
+
+	// Listener is the network listener for the server to use
+	Listener net.Listener
 }
 
 // StartServer starts a gRPC server serving a benchmark service according to info.
-// It returns its listen address and a function to stop the server.
-func StartServer(info ServerInfo, opts ...grpc.ServerOption) (string, func()) {
-	lis, err := net.Listen("tcp", info.Addr)
-	if err != nil {
-		grpclog.Fatalf("Failed to listen: %v", err)
-	}
+// It returns a function to stop the server.
+func StartServer(info ServerInfo, opts ...grpc.ServerOption) func() {
+	opts = append(opts, grpc.WriteBufferSize(128*1024))
+	opts = append(opts, grpc.ReadBufferSize(128*1024))
 	s := grpc.NewServer(opts...)
 	switch info.Type {
 	case "protobuf":
@@ -155,8 +166,8 @@ func StartServer(info ServerInfo, opts ...grpc.ServerOption) (string, func()) {
 	default:
 		grpclog.Fatalf("failed to StartServer, unknown Type: %v", info.Type)
 	}
-	go s.Serve(lis)
-	return lis.Addr().String(), func() {
+	go s.Serve(info.Listener)
+	return func() {
 		s.Stop()
 	}
 }
@@ -215,38 +226,56 @@ func DoByteBufStreamingRoundTrip(stream testpb.BenchmarkService_StreamingCallCli
 
 // NewClientConn creates a gRPC client connection to addr.
 func NewClientConn(addr string, opts ...grpc.DialOption) *grpc.ClientConn {
-	conn, err := grpc.Dial(addr, opts...)
+	return NewClientConnWithContext(context.Background(), addr, opts...)
+}
+
+// NewClientConnWithContext creates a gRPC client connection to addr using ctx.
+func NewClientConnWithContext(ctx context.Context, addr string, opts ...grpc.DialOption) *grpc.ClientConn {
+	opts = append(opts, grpc.WithWriteBufferSize(128*1024))
+	opts = append(opts, grpc.WithReadBufferSize(128*1024))
+	conn, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
 		grpclog.Fatalf("NewClientConn(%q) failed to create a ClientConn %v", addr, err)
 	}
 	return conn
 }
 
-func runUnary(b *testing.B, maxConcurrentCalls, reqSize, respSize int) {
+func runUnary(b *testing.B, benchFeatures stats.Features) {
 	s := stats.AddStats(b, 38)
-	b.StopTimer()
-	target, stopper := StartServer(ServerInfo{Addr: "localhost:0", Type: "protobuf"}, grpc.MaxConcurrentStreams(uint32(maxConcurrentCalls+1)))
+	nw := &latency.Network{Kbps: benchFeatures.Kbps, Latency: benchFeatures.Latency, MTU: benchFeatures.Mtu}
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		grpclog.Fatalf("Failed to listen: %v", err)
+	}
+	target := lis.Addr().String()
+	lis = nw.Listener(lis)
+	stopper := StartServer(ServerInfo{Type: "protobuf", Listener: lis}, grpc.MaxConcurrentStreams(uint32(benchFeatures.MaxConcurrentCalls+1)))
 	defer stopper()
-	conn := NewClientConn(target, grpc.WithInsecure())
+	conn := NewClientConn(
+		target, grpc.WithInsecure(),
+		grpc.WithDialer(func(address string, timeout time.Duration) (net.Conn, error) {
+			return nw.TimeoutDialer(net.DialTimeout)("tcp", address, timeout)
+		}),
+	)
 	tc := testpb.NewBenchmarkServiceClient(conn)
 
 	// Warm up connection.
 	for i := 0; i < 10; i++ {
-		unaryCaller(tc, reqSize, respSize)
+		unaryCaller(tc, benchFeatures.ReqSizeBytes, benchFeatures.RespSizeBytes)
 	}
-	ch := make(chan int, maxConcurrentCalls*4)
+	ch := make(chan int, benchFeatures.MaxConcurrentCalls*4)
 	var (
 		mu sync.Mutex
 		wg sync.WaitGroup
 	)
-	wg.Add(maxConcurrentCalls)
+	wg.Add(benchFeatures.MaxConcurrentCalls)
 
 	// Distribute the b.N calls over maxConcurrentCalls workers.
-	for i := 0; i < maxConcurrentCalls; i++ {
+	for i := 0; i < benchFeatures.MaxConcurrentCalls; i++ {
 		go func() {
 			for range ch {
 				start := time.Now()
-				unaryCaller(tc, reqSize, respSize)
+				unaryCaller(tc, benchFeatures.ReqSizeBytes, benchFeatures.RespSizeBytes)
 				elapse := time.Since(start)
 				mu.Lock()
 				s.Add(elapse)
@@ -255,22 +284,33 @@ func runUnary(b *testing.B, maxConcurrentCalls, reqSize, respSize int) {
 			wg.Done()
 		}()
 	}
-	b.StartTimer()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ch <- i
 	}
-	b.StopTimer()
 	close(ch)
 	wg.Wait()
+	b.StopTimer()
 	conn.Close()
 }
 
-func runStream(b *testing.B, maxConcurrentCalls, reqSize, respSize int) {
+func runStream(b *testing.B, benchFeatures stats.Features) {
 	s := stats.AddStats(b, 38)
-	b.StopTimer()
-	target, stopper := StartServer(ServerInfo{Addr: "localhost:0", Type: "protobuf"}, grpc.MaxConcurrentStreams(uint32(maxConcurrentCalls+1)))
+	nw := &latency.Network{Kbps: benchFeatures.Kbps, Latency: benchFeatures.Latency, MTU: benchFeatures.Mtu}
+	lis, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		grpclog.Fatalf("Failed to listen: %v", err)
+	}
+	target := lis.Addr().String()
+	lis = nw.Listener(lis)
+	stopper := StartServer(ServerInfo{Type: "protobuf", Listener: lis}, grpc.MaxConcurrentStreams(uint32(benchFeatures.MaxConcurrentCalls+1)))
 	defer stopper()
-	conn := NewClientConn(target, grpc.WithInsecure())
+	conn := NewClientConn(
+		target, grpc.WithInsecure(),
+		grpc.WithDialer(func(address string, timeout time.Duration) (net.Conn, error) {
+			return nw.TimeoutDialer(net.DialTimeout)("tcp", address, timeout)
+		}),
+	)
 	tc := testpb.NewBenchmarkServiceClient(conn)
 
 	// Warm up connection.
@@ -279,18 +319,18 @@ func runStream(b *testing.B, maxConcurrentCalls, reqSize, respSize int) {
 		b.Fatalf("%v.StreamingCall(_) = _, %v", tc, err)
 	}
 	for i := 0; i < 10; i++ {
-		streamCaller(stream, reqSize, respSize)
+		streamCaller(stream, benchFeatures.ReqSizeBytes, benchFeatures.RespSizeBytes)
 	}
 
-	ch := make(chan struct{}, maxConcurrentCalls*4)
+	ch := make(chan struct{}, benchFeatures.MaxConcurrentCalls*4)
 	var (
 		mu sync.Mutex
 		wg sync.WaitGroup
 	)
-	wg.Add(maxConcurrentCalls)
+	wg.Add(benchFeatures.MaxConcurrentCalls)
 
 	// Distribute the b.N calls over maxConcurrentCalls workers.
-	for i := 0; i < maxConcurrentCalls; i++ {
+	for i := 0; i < benchFeatures.MaxConcurrentCalls; i++ {
 		stream, err := tc.StreamingCall(context.Background())
 		if err != nil {
 			b.Fatalf("%v.StreamingCall(_) = _, %v", tc, err)
@@ -298,7 +338,7 @@ func runStream(b *testing.B, maxConcurrentCalls, reqSize, respSize int) {
 		go func() {
 			for range ch {
 				start := time.Now()
-				streamCaller(stream, reqSize, respSize)
+				streamCaller(stream, benchFeatures.ReqSizeBytes, benchFeatures.RespSizeBytes)
 				elapse := time.Since(start)
 				mu.Lock()
 				s.Add(elapse)
@@ -307,13 +347,13 @@ func runStream(b *testing.B, maxConcurrentCalls, reqSize, respSize int) {
 			wg.Done()
 		}()
 	}
-	b.StartTimer()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ch <- struct{}{}
 	}
-	b.StopTimer()
 	close(ch)
 	wg.Wait()
+	b.StopTimer()
 	conn.Close()
 }
 func unaryCaller(client testpb.BenchmarkServiceClient, reqSize, respSize int) {

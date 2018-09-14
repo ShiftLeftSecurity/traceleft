@@ -19,7 +19,6 @@
 package grpc
 
 import (
-	"fmt"
 	"net"
 	"sync"
 
@@ -28,10 +27,12 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/naming"
+	"google.golang.org/grpc/status"
 )
 
 // Address represents a server the client connects to.
-// This is the EXPERIMENTAL API and may be changed or extended in the future.
+//
+// Deprecated: please use package balancer.
 type Address struct {
 	// Addr is the server address on which a connection will be established.
 	Addr string
@@ -41,6 +42,8 @@ type Address struct {
 }
 
 // BalancerConfig specifies the configurations for Balancer.
+//
+// Deprecated: please use package balancer.
 type BalancerConfig struct {
 	// DialCreds is the transport credential the Balancer implementation can
 	// use to dial to a remote load balancer server. The Balancer implementations
@@ -53,7 +56,8 @@ type BalancerConfig struct {
 }
 
 // BalancerGetOptions configures a Get call.
-// This is the EXPERIMENTAL API and may be changed or extended in the future.
+//
+// Deprecated: please use package balancer.
 type BalancerGetOptions struct {
 	// BlockingWait specifies whether Get should block when there is no
 	// connected address.
@@ -61,7 +65,8 @@ type BalancerGetOptions struct {
 }
 
 // Balancer chooses network addresses for RPCs.
-// This is the EXPERIMENTAL API and may be changed or extended in the future.
+//
+// Deprecated: please use package balancer.
 type Balancer interface {
 	// Start does the initialization work to bootstrap a Balancer. For example,
 	// this function may start the name resolution and watch the updates. It will
@@ -112,28 +117,10 @@ type Balancer interface {
 	Close() error
 }
 
-// downErr implements net.Error. It is constructed by gRPC internals and passed to the down
-// call of Balancer.
-type downErr struct {
-	timeout   bool
-	temporary bool
-	desc      string
-}
-
-func (e downErr) Error() string   { return e.desc }
-func (e downErr) Timeout() bool   { return e.timeout }
-func (e downErr) Temporary() bool { return e.temporary }
-
-func downErrorf(timeout, temporary bool, format string, a ...interface{}) downErr {
-	return downErr{
-		timeout:   timeout,
-		temporary: temporary,
-		desc:      fmt.Sprintf(format, a...),
-	}
-}
-
 // RoundRobin returns a Balancer that selects addresses round-robin. It uses r to watch
 // the name resolution updates and updates the addresses available correspondingly.
+//
+// Deprecated: please use package balancer/roundrobin.
 func RoundRobin(r naming.Resolver) Balancer {
 	return &roundRobin{r: r}
 }
@@ -157,7 +144,7 @@ type roundRobin struct {
 func (rr *roundRobin) watchAddrUpdates() error {
 	updates, err := rr.w.Next()
 	if err != nil {
-		grpclog.Printf("grpc: the naming watcher stops working due to %v.\n", err)
+		grpclog.Warningf("grpc: the naming watcher stops working due to %v.", err)
 		return err
 	}
 	rr.mu.Lock()
@@ -173,7 +160,7 @@ func (rr *roundRobin) watchAddrUpdates() error {
 			for _, v := range rr.addrs {
 				if addr == v.addr {
 					exist = true
-					grpclog.Println("grpc: The name resolver wanted to add an existing address: ", addr)
+					grpclog.Infoln("grpc: The name resolver wanted to add an existing address: ", addr)
 					break
 				}
 			}
@@ -190,7 +177,7 @@ func (rr *roundRobin) watchAddrUpdates() error {
 				}
 			}
 		default:
-			grpclog.Println("Unknown update.Op ", update.Op)
+			grpclog.Errorln("Unknown update.Op ", update.Op)
 		}
 	}
 	// Make a copy of rr.addrs and write it onto rr.addrCh so that gRPC internals gets notified.
@@ -200,6 +187,10 @@ func (rr *roundRobin) watchAddrUpdates() error {
 	}
 	if rr.done {
 		return ErrClientConnClosing
+	}
+	select {
+	case <-rr.addrCh:
+	default:
 	}
 	rr.addrCh <- open
 	return nil
@@ -223,7 +214,7 @@ func (rr *roundRobin) Start(target string, config BalancerConfig) error {
 		return err
 	}
 	rr.w = w
-	rr.addrCh = make(chan []Address)
+	rr.addrCh = make(chan []Address, 1)
 	go func() {
 		for {
 			if err := rr.watchAddrUpdates(); err != nil {
@@ -306,7 +297,7 @@ func (rr *roundRobin) Get(ctx context.Context, opts BalancerGetOptions) (addr Ad
 	if !opts.BlockingWait {
 		if len(rr.addrs) == 0 {
 			rr.mu.Unlock()
-			err = Errorf(codes.Unavailable, "there is no address available")
+			err = status.Errorf(codes.Unavailable, "there is no address available")
 			return
 		}
 		// Returns the next addr on rr.addrs for failfast RPCs.
@@ -390,4 +381,11 @@ func (rr *roundRobin) Close() error {
 		close(rr.addrCh)
 	}
 	return nil
+}
+
+// pickFirst is used to test multi-addresses in one addrConn in which all addresses share the same addrConn.
+// It is a wrapper around roundRobin balancer. The logic of all methods works fine because balancer.Get()
+// returns the only address Up by resetTransport().
+type pickFirst struct {
+	*roundRobin
 }
