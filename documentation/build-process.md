@@ -3,9 +3,17 @@
 ## Overview
 
 Building all [TraceLeft components](README.md) involves a set of ordered
-steps.
+steps. TraceLeft is designed to produce single self-sufficient binaries based 
+on pre-defined static configurations that can however be applied dynamically 
+to target processes. The `traceleft` binary produced as a result of this build
+process is an example where a pre-defined 
+[event configuration](../examples/config.json) can then be applied to whatever
+process that user wants to trace dynamically. For example, with traceleft, one 
+can trace `open` and `close` events for a text editor having PID `4242` while 
+tracing `chmod` events for Slack process having PID `1234` - all with a single 
+binary. The build steps are illustrated below:
 
-![traceleft-build-components](traceleft-build-components.png)
+![build-steps](build-steps.png)
 
 To build `traceleft` in one go do:
 
