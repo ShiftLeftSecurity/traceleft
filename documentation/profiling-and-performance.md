@@ -24,22 +24,22 @@ Then, look for `__bpf_prog_run`.
 
 ## Performance Tests with `nginx`
 
-First, start a nginx container
+First, start a `nginx` container
 
-```
+```bash
 docker run -ti --net=host nginx
 ```
 
 Then, in a second terminal, trace the `nginx` worker process:
 
-```
+```bash
 sudo ./build/bin/traceleft trace --pprof-listen-addr=localhost:9090 \
   $(for h in battery/out/*; do echo -n "$(pgrep -f 'nginx: worker'):$h "; done)
 ```
 
 Finally, in a third terminal, start generating a lot of requests:
 
-```
+```bash
 while true; do curl localhost; done
 ```
 

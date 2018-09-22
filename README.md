@@ -10,10 +10,11 @@ traced process. TraceLeft is built using [gobpf](https://github.com/iovisor/gobp
 and takes inspiration from the [BCC](https://github.com/iovisor/bcc) toolkit. 
 TraceLeft has been designed as a framework to build configuration driven system 
 auditing tools as well as application tracing tools used for network and syscall
-monitoring. TraceLeft has been tested on kernel versions `v4.11+` with eBPF support 
-for Kprobes ans Kretprobes. Though eBPF support for static tracepoints has 
-landed in recent kernels, one of the early goals of TraceLeft was to have it run 
-on older kernels with early eBPF support. Tracepoint support is in the works.
+monitoring. TraceLeft has been tested on kernel versions `v4.4.0` till `v4.16.0`
+with eBPF support for Kprobes and Kretprobes. Though eBPF support for static 
+tracepoints has landed in recent kernels, one of the early goals of TraceLeft 
+was to have it run on older kernels with early eBPF support. Tracepoint support 
+is in the works.
 
 The following diagram shows how a set of syscalls and other events from an 
 application can be hooked onto using TraceLeft and then eventually tracked through 
